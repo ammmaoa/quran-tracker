@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تقرير اليوم</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Tahoma, sans-serif;
+  background: #f3f6f9;
+  color: #222;
+}
+
+.container {
+  width: 94%;
+  max-width: 850px;
+  margin: 20px auto;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.day-info {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #555;
+  font-size: 18px;
+}
+
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.card h2 {
+  margin-top: 0;
+}
+
+.details {
+  background: #f7f7f7;
+  border-right: 4px solid #777;
+  padding: 12px;
+  border-radius: 8px;
+  line-height: 1.8;
+  margin-bottom: 14px;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.status-btn {
+  border: none;
+  padding: 11px 15px;
+  border-radius: 9px;
+  background: #e9ecef;
+  cursor: pointer;
+  font-size: 15px;
+  transition: 0.2s;
+}
+
+.status-btn:hover {
+  transform: translateY(-1px);
+}
+
+.status-btn.selected {
+  background: #198754;
+  color: white;
+}
+
+.extra-box,
+.partial-box {
+  display: none;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.partial-box {
+  background: #fff8e1;
+  border: 1px solid #f0c36d;
+}
+
+.extra-box {
+  background: #eaf7ee;
+  border: 1px solid #8bc79c;
+}
+
+.extra-box label,
+.partial-box label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+textarea {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 10px;
+  font-family: inherit;
+  font-size: 15px;
+}
+
+.quick-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.quick-btn {
+  border: none;
+  padding: 9px 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #e7f0ff;
+  font-size: 14px;
+}
+
+.submit-btn {
+  width: 100%;
+  border: none;
+  background: #0d6efd;
+  color: white;
+  padding: 15px;
+  border-radius: 12px;
+  font-size: 18px;
+  cursor: pointer;
+  margin-top: 5px;
+}
+
+.submit-btn:hover {
+  background: #0b5ed7;
+}
+
+.message {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 9px;
+  display: none;
+  text-align: center;
+}
+
+.message.error {
+  display: block;
+  background: #ffe5e5;
+  color: #a40000;
+}
+
+.message.success {
+  display: block;
+  background: #e4f7e9;
+  color: #146c2e;
+}
+
+.success-box {
+  display: none;
+  background: #e8f7ed;
+  color: #146c2e;
+  padding: 15px;
+  border-radius: 12px;
+  text-align: center;
+  margin-top: 15px;
+  font-size: 17px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.stat {
+  background: white;
+  padding: 14px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 2px 7px rgba(0,0,0,0.06);
+}
+
+.stat-number {
+  font-size: 25px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.progress-message {
+  background: white;
+  padding: 14px;
+  border-radius: 12px;
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.navigation {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.navigation button {
+  flex: 1;
+  border: none;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  background: #6c757d;
+  color: white;
+}
+
+@media (max-width: 600px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .buttons {
+    flex-direction: column;
+  }
+
+  .status-btn {
+    width: 100%;
+  }
+
+  .navigation {
+    flex-direction: column;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>📖 تقرير اليوم</h1>
+  <div class="day-info" id="dayInfo">جارٍ التحميل...</div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-number" id="completed">0</div>
+      <div>أيام مكتملة</div>
+    </div>
+
+    <div class="stat">
+      <div class="stat-number" id="partialDays">0</div>
+      <div>أيام جزئية</div>
+    </div>
+
+    <div class="stat">
+      <div class="stat-number" id="missedDays">0</div>
+      <div>أيام لم يتم فيها المطلوب</div>
+    </div>
+  </div>
+
+  <div class="progress-message" id="progressMessage">
+    جارٍ حساب التقدم...
+  </div>
+
+  <!-- الكنز -->
+  <div class="card">
+    <h2>💎 الكنز</h2>
+
+    <div class="details" id="treasureDetails"></div>
+
+    <div class="buttons" id="treasureButtons">
+      <button class="status-btn" data-section="treasure" data-status="done">
+        تم بأكمله
+      </button>
+
+      <button class="status-btn" data-section="treasure" data-status="extra">
+        تم وزيادة
+      </button>
+
+      <button class="status-btn" data-section="treasure" data-status="partial">
+        جزئي
+      </button>
+
+      <button class="status-btn" data-section="treasure" data-status="missed">
+        لم يتم
+      </button>
+    </div>
+
+    <!-- تظهر فقط مع جزئي -->
+    <div class="partial-box" id="treasurePartial">
+      <label for="treasurePartialInput">
+        الجزء الذي لم يتم:
+      </label>
+
+      <textarea
+        id="treasurePartialInput"
+        placeholder="اكتب الجزء الذي لم يتم إنجازه..."
+      ></textarea>
+    </div>
+
+    <!-- تظهر فقط مع تم وزيادة -->
+    <div class="extra-box" id="treasureExtra">
+      <label for="treasureExtraInput">
+        الزيادة التي تم إنجازها:
+      </label>
+
+      <textarea
+        id="treasureExtraInput"
+        placeholder="اكتب مقدار الزيادة التي أنجزتها..."
+      ></textarea>
+    </div>
+
+    <div class="quick-buttons">
+      <button class="quick-btn" id="treasureQuickDone">
+        تم المطلوب بالكامل
+      </button>
+
+      <button class="quick-btn" id="treasureQuickMissed">
+        لم يتم المطلوب
+      </button>
+    </div>
+  </div>
+
+  <!-- الجديد -->
+  <div class="card">
+    <h2>📘 الجديد</h2>
+
+    <div class="details" id="newDetails"></div>
+
+    <div class="buttons" id="newButtons">
+      <button class="status-btn" data-section="new" data-status="done">
+        تم بأكمله
+      </button>
+
+      <button class="status-btn" data-section="new" data-status="extra">
+        تم وزيادة
+      </button>
+
+      <button class="status-btn" data-section="new" data-status="partial">
+        جزئي
+      </button>
+
+      <button class="status-btn" data-section="new" data-status="missed">
+        لم يتم
+      </button>
+    </div>
+
+    <!-- تظهر فقط مع جزئي -->
+    <div class="partial-box" id="newPartial">
+      <label for="newPartialInput">
+        الجزء الذي لم يتم:
+      </label>
+
+      <textarea
+        id="newPartialInput"
+        placeholder="اكتب الجزء الذي لم يتم إنجازه..."
+      ></textarea>
+    </div>
+
+    <!-- تظهر فقط مع تم وزيادة -->
+    <div class="extra-box" id="newExtra">
+      <label for="newExtraInput">
+        الزيادة التي تم إنجازها:
+      </label>
+
+      <textarea
+        id="newExtraInput"
+        placeholder="اكتب مقدار الزيادة التي أنجزتها..."
+      ></textarea>
+    </div>
+
+    <div class="quick-buttons">
+      <button class="quick-btn" id="newQuickDone">
+        تم المطلوب بالكامل
+      </button>
+
+      <button class="quick-btn" id="newQuickMissed">
+        لم يتم المطلوب
+      </button>
+    </div>
+  </div>
+
+  <!-- التثبيت -->
+  <div class="card" id="fixCard">
+    <h2>🔄 التثبيت</h2>
+
+    <div class="details" id="fixDetails"></div>
+
+    <div id="fixContent"></div>
+
+    <div class="buttons" id="fixButtons">
+      <button class="status-btn" data-section="fix" data-status="done">
+        تم
+      </button>
+
+      <button class="status-btn" data-section="fix" data-status="missed">
+        لم يتم
+      </button>
+    </div>
+  </div>
+
+  <div class="message" id="reportMessage"></div>
+
+  <button class="submit-btn" id="submitButton">
+    📤 تسجيل تقرير اليوم
+  </button>
+
+  <div class="success-box" id="successBox">
+    ✅ تم تسجيل تقرير اليوم بنجاح
+  </div>
+
+  <div class="navigation">
+    <button onclick="location.href='index.html'">
+      🏠 الرئيسية
+    </button>
+
+    <button onclick="location.href='plan.html'">
+      📅 الخطة
+    </button>
+  </div>
+
+</div>
+
+<script>
+
+const GOOGLE_SCRIPT_URL =
+"https://script.google.com/macros/s/AKfycbyladtIbtLJUU9M-f25RuOaW9dVaTs2FXQj2D1LnhNYXvkKaOWEpHbaxRQ7rVcf6foCPg/exec";
+
+
+/* =========================================================
+   تفاصيل الكنز الأصلية — لا يتم تغييرها
+   ========================================================= */
+
+const treasurePlan = [
+"الأنعام: بداية السورة آية 1 + وله ما سكن (13-35) + إنما يستجيب (36-58)",
+"الأنعام: وعنده مفاتح الغيب (59-73) + وإذ قال إبراهيم (74-94)",
+"الأنعام: إن الله فالق الحب (95-110) + ولو أننا نزلنا (111-126)",
+"الأنعام: لهم دار السلام (127-140) + وهو الذي أنشأ (141-150)",
+"الأنعام: قل تعالوا أتل (151-165) + الأعراف بداية (1-30)",
+"الأعراف: يا بني آدم خذوا (31-46) + وإذا صرفت (47-64)",
+"الأعراف: وإلى عاد أخاهم (65-87) + قال الملأ (88-116)",
+"الأعراف: وأوحينا إلى موسى (117-141) + وواعدنا (142-155)",
+"الأعراف: واكتب لنا (156-170) + وإذ نتقنا (171-188)",
+"الأعراف: هو الذي خلقكم (189-206) + الأنفال بداية (1-21)",
+"الأنفال: إن شر الدواب (22-40) + واعلموا أنما (41-60)",
+"الأنفال: وإن جنحوا (61-75) + التوبة بداية (1-18)",
+"التوبة: أجعلتم سقاية (19-33) + يا أيها الذين (34-45)",
+"التوبة: ولو أرادوا الخروج (46-59) + إنما الصدقات (60-74)",
+"التوبة: ومنهم من عاهد (75-92) + إنما السبيل (93-110)",
+"التوبة: إن الله اشترى (111-121) + وما كان (122-129)",
+"يونس: بداية (1-10) + ولو يعجل الله (11-25)",
+"يونس: للذين أحسنوا (26-52) + ويستنبئونك (53-70)",
+"يونس: فمن أظلم (71-89) + وجاوزنا ببني إسرائيل (90-109 ختامها)",
+"هود: بداية (1-23) + ويا قوم لا أسألكم (24-40)",
+"هود: قيل يا نوح اهبط (41-60) + وإلى ثمود أخاهم (61-83)",
+"هود: وإلى مدين أخاهم (84-107) + وأقم الصلاة (108-123)",
+"يوسف: بداية (1-29) + وقال نسوة (30-52)",
+"يوسف: وما أبرئ نفسي (53-76) + فلما استيأسوا (77-100)",
+"يوسف: وكأين من آية (101-111 ختامها) + الرعد بداية (1-18)",
+"الرعد: أفمن يعلم (19-34) + ومثل الجنة (35-43 ختامها)",
+"إبراهيم: بداية (1-27) + ألم تر إلى الذين بدلوا (28-52 ختامها)",
+"الحجر: بداية (1-48) + ونبئهم عن ضيف (49-99 ختامها)",
+"النحل: بداية (1-29) + وقيل للذين اتقوا (30-50)",
+"النحل: وقال الله لا تتخذوا (51-74) + وضرب الله مثلاً (75-89)",
+"النحل: إن الله يأمر بالعدل (90-110) + ثم إن ربك للذين هاجروا (111-128 ختامها)",
+"الإسراء: بداية (1-22) + وقضى ربك (23-49)",
+"الإسراء: وقل لعبادي (50-69) + وإذ قلنا لك (70-98)",
+"الإسراء: أولم يروا أن الله (99-111 ختامها) + الكهف بداية (1-16)",
+"الكهف: وترى الشمس (17-31) + واضرب لهم مثلاً (32-50)",
+"الكهف: وما منع الناس (51-74) + قال ألم أقل لك (75-110 ختامها)",
+"مريم: بداية (1-58) + أفرأيت الذي كفر (59-98 ختامها)",
+"طه: بداية (1-54) + قال فما بالك (55-82)",
+"طه: وما أعجلك (83-110) + ومن أعرض عن ذكري (111-135 ختامها)",
+"الأنبياء: بداية (1-50) + ولقد آتينا إبراهيم (51-82)",
+"الأنبياء: وأيوب إذ نادى (83-112 ختامها) + الحج بداية (1-18)",
+"الحج: ألم تر أن الله يسجد له (19-37) + أذن للذين يقاتلون (38-59)",
+"الحج: ذلك ومن عاقب (60-78 ختامها) + المؤمنون بداية (1-35)",
+"المؤمنون: ثم أنشأنا (36-74) + حتى إذا أخذنا (75-118 ختامها)",
+"النور: بداية (1-20) + لولا إذ سمعتموه (21-34)",
+"النور: الله نور السماوات والأرض (35-52) + ولقد أنزلنا (53-64 ختامها)",
+"الفرقان: بداية (1-20) + وقال الذين لا يرجون (21-52)",
+"الفرقان: وهو الذي مرج البحرين (53-77 ختامها) + الشعراء بداية (1-51)",
+"الشعراء: قال للملأ حوله (52-110) + قالوا أنؤمن لك (111-180)",
+"الشعراء: قالوا إنما أنت من السحرين (181-227 ختامها) + النمل بداية (1-26)",
+"النمل: قال سننظر (27-55) + أمن خلق السماوات (56-75)",
+"النمل: إن هذا القرآن يقص (76-93 ختامها) + القصص بداية (1-11)",
+"القصص: وحرمنا عليه المراضع (12-28) + فلما قضى موسى الأجل (29-50)",
+"القصص: ولقد وصلنا لهم القول (51-75) + إن قارون كان (76-88 ختامها)",
+"العنكبوت: بداية (1-25) + فما كان جواب قومه (26-45)",
+"العنكبوت: ولا تجادلوا أهل الكتاب (46-69 ختامها) + الروم بداية (1-30)",
+"الروم: ومن آياته أن خلق لكم (31-60 ختامها) + لقمان بداية (1-21)",
+"لقمان: وإذا قيل لهم اتبعوا (22-34 ختامها) + السجدة كاملة (1-30 ختامها)",
+"الأحزاب: بداية (1-17) + وإذ قالت طائفة (18-30)",
+"الأحزاب: ومن يقنت منكن (31-50) + لا يحل لك النساء (51-59)",
+"الأحزاب: يا أيها الذين آمنوا اذكروا (60-73 ختامها) + سبأ بداية (1-23)",
+"سبأ: قل إن ربي يبسط الرزق (24-54 ختامها) + فاطر بداية (1-14)",
+"فاطر: يا أيها الناس أنتم الفقراء (15-45 ختامها) + يس بداية (1-27)",
+"يس: وما أنزلنا على قومه (28-59) + ألم أعهد إليكم (60-83 ختامها)",
+"الصافات: بداية (1-82) + وإن من شيعته لإبراهيم (83-144)",
+"الصافات: فنبذناه بالعراء (145-182 ختامها) + ص بداية (1-51)",
+"ص: هذا وإن للطاغين (52-88 ختامها) + الزمر بداية (1-31)",
+"الزمر: فمن أظلم ممن كذب (32-52) + قل يا عبادي الذين أسرفوا (53-75 ختامها)",
+"غافر: بداية (1-20) + وقال رجل مؤمن (21-40)",
+"غافر: ويا قوم ما لي أدعوكم (41-65) + فسبحان الله (66-85 ختامها)",
+"فصلت: بداية (1-24) + وقال الذين كفروا (25-46)",
+"فصلت: إليه يرد علم الساعة (47-54 ختامها) + الشورى بداية (1-26)",
+"الشورى: ومن آياته الجوار (27-53 ختامها) + الزخرف بداية (1-23)",
+"الزخرف: واستمسك بالذي أوحي (24-56) + ولما ضرب ابن مريم (57-89 ختامها)",
+"الدخان كاملة (1-59) + الجاثية كاملة (1-37)",
+"الأحقاف: بداية (1-20) + واذكر أخا عاد (21-35 ختامها)",
+"محمد كاملة (1-38) + الفتح بداية (1-17)",
+"الفتح: هو الذي أنزل السكينة (18-29 ختامها) + الحجرات كاملة (1-18)",
+"ق كاملة (1-45) + الذاريات بداية (1-30)",
+"الذاريات: قال فما خطبكم (31-60 ختامها) + الطور كاملة (1-49)",
+"النجم كاملة (1-62) + القمر كاملة (1-55)",
+"الرحمن كاملة (1-78) + الواقعة كاملة (1-96)",
+"الحديد كاملة (1-29) + المجادلة كاملة (1-22)",
+"الحشر كاملة (1-24) + الممتحنة كاملة (1-13)",
+"الصف (1-14) + الجمعة (1-11) + المنافقون (1-11) + التغابن (1-18)",
+"الطلاق (1-12) + التحريم (1-12) + الملك (1-30)",
+"القلم (1-52) + الحاقة (1-52) + المعارج (1-44)",
+"نوح (1-28) + الجن (1-28) + المزمل (1-20) + المدثر (1-56)",
+"القيامة (1-40) إلى المرسلات (1-50) + جزء عم (النبأ إلى العلق)",
+"جزء عم من القدر إلى الناس (ختام القرآن الكريم)"
+];
+
+
+/* =========================================================
+   الجديد — تفاصيلك الأصلية كما هي
+   ========================================================= */
+
+const newPlan = [
+"سورة المائدة: الربع الأول، الآيات 1–6",
+"سورة المائدة: الربع الأول، الآيات 7–11",
+"سورة المائدة: الربع الثاني، الآيات 12–19",
+"سورة المائدة: الربع الثاني، الآيات 20–26",
+"سورة المائدة: الربع الثالث، الآيات 27–34",
+"سورة المائدة: الربع الثالث، الآيات 35–40",
+"سورة المائدة: الربع الرابع، الآيات 41–46",
+"سورة المائدة: الربع الرابع، الآيات 47–50",
+"سورة المائدة: الربع الخامس، الآيات 51–58",
+"سورة المائدة: الربع الخامس، الآيات 59–66",
+"سورة المائدة: الربع السادس، الآيات 67–74",
+"سورة المائدة: الربع السادس، الآيات 75–81",
+"سورة المائدة: الربع السابع، الآيات 82–89",
+"سورة المائدة: الربع السابع، الآيات 90–96",
+"سورة المائدة: الربع الثامن، الآيات 97–102",
+"سورة المائدة: الربع الثامن، الآيات 103–108",
+"سورة المائدة: الربع التاسع، الآيات 109–115",
+"سورة المائدة: الربع التاسع، الآيات 116–120"
+];
+
+
+/* =========================================================
+   التثبيت — تفاصيلك الأصلية كما هي
+   ========================================================= */
+
+const fixationPlan = [
+"الربع الأول: المائدة 1–11",
+"الربع الثاني: المائدة 12–26",
+"الربع الثالث: المائدة 27–40",
+"الربع الرابع: المائدة 41–50",
+"الربع الخامس: المائدة 51–66",
+"الربع السادس: المائدة 67–81",
+"الربع السابع: المائدة 82–96",
+"الربع الثامن: المائدة 97–108",
+"الربع التاسع: المائدة 109–120"
+];
+
+const quarterStartDays = [1,3,5,7,9,11,13,15,17];
+
+const fixIntervals = [1,3,7,14,30,60];
+
+
+/* =========================================================
+   الحالة
+   ========================================================= */
+
+let state = {
+  newStatus: JSON.parse(localStorage.getItem("qt_newStatus") || "{}"),
+  treasureStatus: JSON.parse(localStorage.getItem("qt_treasureStatus") || "{}"),
+  fixStatus: JSON.parse(localStorage.getItem("qt_fixStatus") || "{}"),
+  partials: JSON.parse(localStorage.getItem("qt_partials") || "{}"),
+  extra: JSON.parse(localStorage.getItem("qt_extra") || "{}"),
+  reportSubmitted: JSON.parse(localStorage.getItem("qt_reportSubmitted") || "{}"),
+  reportSubmittedAt: JSON.parse(localStorage.getItem("qt_reportSubmittedAt") || "{}"),
+  startDate: localStorage.getItem("qt_startDate") || ""
+};
+
+
+/* =========================================================
+   تحديد اليوم
+   ========================================================= */
+
+const params = new URLSearchParams(location.search);
+
+let day = parseInt(
+  params.get("day") ||
+  localStorage.getItem("qt_currentDay") ||
+  "1",
+  10
+);
+
+if (isNaN(day)) day = 1;
+
+day = Math.max(1, Math.min(90, day));
+
+
+/* =========================================================
+   التاريخ
+   ========================================================= */
+
+function getDayDate() {
+  if (!state.startDate) return null;
+
+  const date = new Date(
+    state.startDate + "T00:00:00"
+  );
+
+  date.setDate(
+    date.getDate() + day - 1
+  );
+
+  return date;
+}
+
+function formatDate(date) {
+  if (!date) return "";
+
+  return date.toLocaleDateString("ar-EG", {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+}
+
+
+/* =========================================================
+   التثبيت
+   مهم: اليوم الأول ليس فيه تثبيت
+   ========================================================= */
+
+function getFixationForDay(d) {
+
+  if (d === 1) {
+    return null;
+  }
+
+  for (let i = 0; i < quarterStartDays.length; i++) {
+
+    const startDay = quarterStartDays[i];
+
+    for (let j = 0; j < fixIntervals.length; j++) {
+
+      const targetDay =
+        startDay + fixIntervals[j];
+
+      if (targetDay === d) {
+        return fixationPlan[i];
+      }
+
+    }
+  }
+
+  return null;
+}
+
+
+/* =========================================================
+   عرض تفاصيل اليوم
+   ========================================================= */
+
+function renderDay() {
+
+  const date = getDayDate();
+
+  document.getElementById("dayInfo").textContent =
+    "اليوم " +
+    day +
+    (date ? " — " + formatDate(date) : "");
+
+  document.getElementById("treasureDetails").textContent =
+    treasurePlan[day - 1] || "لا يوجد تفاصيل لهذا اليوم.";
+
+  if (day <= 18) {
+
+    document.getElementById("newDetails").textContent =
+      newPlan[day - 1] || "لا يوجد تفاصيل لهذا اليوم.";
+
+  } else {
+
+    document.getElementById("newDetails").textContent =
+      "لا يوجد جديد في هذا اليوم حسب الخطة الحالية.";
+
+    document
+      .getElementById("newButtons")
+      .style.display = "none";
+
+    document
+      .getElementById("newPartial")
+      .style.display = "none";
+
+    document
+      .getElementById("newExtra")
+      .style.display = "none";
+
+    document
+      .querySelector(".card:nth-of-type(2)")
+      .querySelector(".quick-buttons")
+      .style.display = "none";
+  }
+
+  const fixToday = getFixationForDay(day);
+
+  if (!fixToday) {
+
+    document.getElementById("fixCard").style.display = "none";
+
+  } else {
+
+    document.getElementById("fixCard").style.display = "block";
+
+    document.getElementById("fixDetails").textContent =
+      fixToday;
+  }
+}
+
+
+/* =========================================================
+   حفظ الحالة محليًا
+   ========================================================= */
+
+function saveState() {
+
+  localStorage.setItem(
+    "qt_newStatus",
+    JSON.stringify(state.newStatus)
+  );
+
+  localStorage.setItem(
+    "qt_treasureStatus",
+    JSON.stringify(state.treasureStatus)
+  );
+
+  localStorage.setItem(
+    "qt_fixStatus",
+    JSON.stringify(state.fixStatus)
+  );
+
+  localStorage.setItem(
+    "qt_partials",
+    JSON.stringify(state.partials)
+  );
+
+  localStorage.setItem(
+    "qt_extra",
+    JSON.stringify(state.extra)
+  );
+
+  localStorage.setItem(
+    "qt_reportSubmitted",
+    JSON.stringify(state.reportSubmitted)
+  );
+
+  localStorage.setItem(
+    "qt_reportSubmittedAt",
+    JSON.stringify(state.reportSubmittedAt)
+  );
+}
+
+
+/* =========================================================
+   إظهار خانة الجزئي أو الزيادة
+   ========================================================= */
+
+function updateExtraPartialBoxes(section) {
+
+  let status;
+
+  if (section === "treasure") {
+    status = state.treasureStatus[day];
+  } else if (section === "new") {
+    status = state.newStatus[day];
+  }
+
+  const partialBox =
+    document.getElementById(
+      section === "treasure"
+        ? "treasurePartial"
+        : "newPartial"
+    );
+
+  const extraBox =
+    document.getElementById(
+      section === "treasure"
+        ? "treasureExtra"
+        : "newExtra"
+    );
+
+  if (!partialBox || !extraBox) return;
+
+  partialBox.style.display =
+    status === "partial"
+      ? "block"
+      : "none";
+
+  extraBox.style.display =
+    status === "extra"
+      ? "block"
+      : "none";
+}
+
+
+/* =========================================================
+   تحديد زر الحالة
+   ========================================================= */
+
+function refreshButtons() {
+
+  document.querySelectorAll(".status-btn").forEach(button => {
+
+    const section =
+      button.dataset.section;
+
+    const status =
+      button.dataset.status;
+
+    let current = "";
+
+    if (section === "treasure") {
+      current = state.treasureStatus[day] || "";
+    }
+
+    if (section === "new") {
+      current = state.newStatus[day] || "";
+    }
+
+    if (section === "fix") {
+      current = state.fixStatus[day] || "";
+    }
+
+    button.classList.toggle(
+      "selected",
+      current === status
+    );
+
+  });
+
+  updateExtraPartialBoxes("treasure");
+  updateExtraPartialBoxes("new");
+}
+
+
+/* =========================================================
+   أزرار الحالات
+   ========================================================= */
+
+document.querySelectorAll(".status-btn").forEach(button => {
+
+  button.addEventListener("click", function() {
+
+    const section = this.dataset.section;
+    const status = this.dataset.status;
+
+    if (section === "treasure") {
+
+      state.treasureStatus[day] = status;
+
+      if (status !== "partial") {
+        delete state.partials["treasure_" + day];
+        document.getElementById("treasurePartialInput").value = "";
+      }
+
+      if (status !== "extra") {
+        delete state.extra["treasure_" + day];
+        document.getElementById("treasureExtraInput").value = "";
+      }
+    }
+
+    if (section === "new") {
+
+      state.newStatus[day] = status;
+
+      if (status !== "partial") {
+        delete state.partials["new_" + day];
+        document.getElementById("newPartialInput").value = "";
+      }
+
+      if (status !== "extra") {
+        delete state.extra["new_" + day];
+        document.getElementById("newExtraInput").value = "";
+      }
+    }
+
+    if (section === "fix") {
+
+      state.fixStatus[day] = status;
+
+    }
+
+    saveState();
+    refreshButtons();
+    updateStats();
+  });
+
+});
+
+
+/* =========================================================
+   إدخال الجزئي والزيادة
+   ========================================================= */
+
+document
+  .getElementById("treasurePartialInput")
+  .addEventListener("input", function() {
+
+    state.partials["treasure_" + day] =
+      this.value;
+
+    saveState();
+  });
+
+
+document
+  .getElementById("treasureExtraInput")
+  .addEventListener("input", function() {
+
+    state.extra["treasure_" + day] =
+      this.value;
+
+    saveState();
+  });
+
+
+document
+  .getElementById("newPartialInput")
+  .addEventListener("input", function() {
+
+    state.partials["new_" + day] =
+      this.value;
+
+    saveState();
+  });
+
+
+document
+  .getElementById("newExtraInput")
+  .addEventListener("input", function() {
+
+    state.extra["new_" + day] =
+      this.value;
+
+    saveState();
+  });
+
+
+/* =========================================================
+   الأزرار السريعة
+   ========================================================= */
+
+document
+  .getElementById("treasureQuickDone")
+  .addEventListener("click", function() {
+
+    state.treasureStatus[day] = "done";
+
+    delete state.partials["treasure_" + day];
+    delete state.extra["treasure_" + day];
+
+    document.getElementById("treasurePartialInput").value = "";
+    document.getElementById("treasureExtraInput").value = "";
+
+    saveState();
+    refreshButtons();
+    updateStats();
+  });
+
+
+document
+  .getElementById("treasureQuickMissed")
+  .addEventListener("click", function() {
+
+    state.treasureStatus[day] = "missed";
+
+    delete state.partials["treasure_" + day];
+    delete state.extra["treasure_" + day];
+
+    document.getElementById("treasurePartialInput").value = "";
+    document.getElementById("treasureExtraInput").value = "";
+
+    saveState();
+    refreshButtons();
+    updateStats();
+  });
+
+
+document
+  .getElementById("newQuickDone")
+  .addEventListener("click", function() {
+
+    if (day > 18) return;
+
+    state.newStatus[day] = "done";
+
+    delete state.partials["new_" + day];
+    delete state.extra["new_" + day];
+
+    document.getElementById("newPartialInput").value = "";
+    document.getElementById("newExtraInput").value = "";
+
+    saveState();
+    refreshButtons();
+    updateStats();
+  });
+
+
+document
+  .getElementById("newQuickMissed")
+  .addEventListener("click", function() {
+
+    if (day > 18) return;
+
+    state.newStatus[day] = "missed";
+
+    delete state.partials["new_" + day];
+    delete state.extra["new_" + day];
+
+    document.getElementById("newPartialInput").value = "";
+    document.getElementById("newExtraInput").value = "";
+
+    saveState();
+    refreshButtons();
+    updateStats();
+  });
+
+
+/* =========================================================
+   الإحصائيات
+   ========================================================= */
+
+function isDayCompleted(d) {
+
+  const treasure =
+    state.treasureStatus[d] === "done";
+
+  const newDone =
+    d > 18 ||
+    state.newStatus[d] === "done";
+
+  return treasure && newDone;
+}
+
+
+function updateStats() {
+
+  let completed = 0;
+  let partialDays = 0;
+  let missedDays = 0;
+
+  for (let d = 1; d <= day; d++) {
+
+    if (isDayCompleted(d)) {
+      completed++;
+    }
+
+    const treasure =
+      state.treasureStatus[d];
+
+    const newStatus =
+      d <= 18
+        ? state.newStatus[d]
+        : "done";
+
+    if (
+      treasure === "partial" ||
+      newStatus === "partial"
+    ) {
+      partialDays++;
+    }
+
+    if (
+      treasure === "missed" ||
+      newStatus === "missed"
+    ) {
+      missedDays++;
+    }
+  }
+
+  document.getElementById("completed").textContent =
+    completed;
+
+  document.getElementById("partialDays").textContent =
+    partialDays;
+
+  document.getElementById("missedDays").textContent =
+    missedDays;
+
+  const progressMessage =
+    document.getElementById("progressMessage");
+
+  if (completed === day) {
+
+    progressMessage.textContent =
+      "🌟 ممتاز! أنت ملتزم بالخطة حتى الآن.";
+
+  } else if (completed > 0) {
+
+    progressMessage.textContent =
+      "💪 استمر، وكل يوم تكمله يقربك أكثر من هدفك.";
+
+  } else {
+
+    progressMessage.textContent =
+      "🌱 ابدأ من اليوم، والاستمرار أهم من الكمال.";
+  }
+}
+
+
+/* =========================================================
+   تحميل البيانات الموجودة في الصفحة
+   ========================================================= */
+
+function loadInputs() {
+
+  document.getElementById("treasurePartialInput").value =
+    state.partials["treasure_" + day] || "";
+
+  document.getElementById("treasureExtraInput").value =
+    state.extra["treasure_" + day] || "";
+
+  document.getElementById("newPartialInput").value =
+    state.partials["new_" + day] || "";
+
+  document.getElementById("newExtraInput").value =
+    state.extra["new_" + day] || "";
+}
+
+
+/* =========================================================
+   بناء التقرير الكامل
+   ========================================================= */
+
+function buildReport() {
+
+  const treasureStatus =
+    state.treasureStatus[day] || "";
+
+  const newStatus =
+    day <= 18
+      ? state.newStatus[day] || ""
+      : "not_applicable";
+
+  const fixToday =
+    getFixationForDay(day);
+
+  const fixStatus =
+    fixToday
+      ? state.fixStatus[day] || ""
+      : "not_applicable";
+
+  const treasurePartial =
+    state.partials["treasure_" + day] || "";
+
+  const treasureExtra =
+    state.extra["treasure_" + day] || "";
+
+  const newPartial =
+    state.partials["new_" + day] || "";
+
+  const newExtra =
+    state.extra["new_" + day] || "";
+
+  let report = "";
+
+  report += "تقرير اليوم " + day + "\n\n";
+
+  report += "💎 الكنز\n";
+  report += "المطلوب: " +
+    (treasurePlan[day - 1] || "") +
+    "\n";
+
+  report += "الحالة: " +
+    getStatusArabic(treasureStatus) +
+    "\n";
+
+  if (treasureStatus === "partial") {
+    report +=
+      "الجزء الذي لم يتم: " +
+      treasurePartial +
+      "\n";
+  }
+
+  if (treasureStatus === "extra") {
+    report +=
+      "الزيادة التي تم إنجازها: " +
+      treasureExtra +
+      "\n";
+  }
+
+  report += "\n";
+
+  report += "📘 الجديد\n";
+
+  if (day <= 18) {
+
+    report +=
+      "المطلوب: " +
+      newPlan[day - 1] +
+      "\n";
+
+    report +=
+      "الحالة: " +
+      getStatusArabic(newStatus) +
+      "\n";
+
+    if (newStatus === "partial") {
+      report +=
+        "الجزء الذي لم يتم: " +
+        newPartial +
+        "\n";
+    }
+
+    if (newStatus === "extra") {
+      report +=
+        "الزيادة التي تم إنجازها: " +
+        newExtra +
+        "\n";
+    }
+
+  } else {
+
+    report +=
+      "لا يوجد جديد في هذا اليوم حسب الخطة الحالية.\n";
+  }
+
+  report += "\n";
+
+  report += "🔄 التثبيت\n";
+
+  if (fixToday) {
+
+    report +=
+      "المطلوب: " +
+      fixToday +
+      "\n";
+
+    report +=
+      "الحالة: " +
+      getFixStatusArabic(fixStatus) +
+      "\n";
+
+  } else {
+
+    report +=
+      "لا يوجد تثبيت في هذا اليوم.\n";
+  }
+
+  return report;
+}
+
+
+/* =========================================================
+   تحويل الحالات للعربي
+   ========================================================= */
+
+function getStatusArabic(status) {
+
+  const map = {
+    done: "تم بأكمله",
+    extra: "تم وزيادة",
+    partial: "جزئي",
+    missed: "لم يتم",
+    not_applicable: "غير مطبق"
+  };
+
+  return map[status] || "لم يتم تحديد الحالة";
+}
+
+
+function getFixStatusArabic(status) {
+
+  const map = {
+    done: "تم",
+    missed: "لم يتم",
+    not_applicable: "غير مطبق"
+  };
+
+  return map[status] || "لم يتم تحديد الحالة";
+}
+
+
+/* =========================================================
+   التحقق قبل الإرسال
+   ========================================================= */
+
+function validateReport() {
+
+  const message =
+    document.getElementById("reportMessage");
+
+  message.className = "message";
+  message.textContent = "";
+
+  const treasureStatus =
+    state.treasureStatus[day];
+
+  if (!treasureStatus) {
+
+    message.className = "message error";
+    message.textContent =
+      "⚠️ اختر حالة الكنز أولًا.";
+
+    return false;
+  }
+
+  if (treasureStatus === "partial") {
+
+    const value =
+      state.partials["treasure_" + day] || "";
+
+    if (!value.trim()) {
+
+      message.className = "message error";
+      message.textContent =
+        "⚠️ اكتب الجزء الذي لم يتم في الكنز.";
+
+      return false;
+    }
+  }
+
+  if (treasureStatus === "extra") {
+
+    const value =
+      state.extra["treasure_" + day] || "";
+
+    if (!value.trim()) {
+
+      message.className = "message error";
+      message.textContent =
+        "⚠️ اكتب الزيادة التي أنجزتها في الكنز.";
+
+      return false;
+    }
+  }
+
+  if (day <= 18) {
+
+    const newStatus =
+      state.newStatus[day];
+
+    if (!newStatus) {
+
+      message.className = "message error";
+      message.textContent =
+        "⚠️ اختر حالة الجديد أولًا.";
+
+      return false;
+    }
+
+    if (newStatus === "partial") {
+
+      const value =
+        state.partials["new_" + day] || "";
+
+      if (!value.trim()) {
+
+        message.className = "message error";
+        message.textContent =
+          "⚠️ اكتب الجزء الذي لم يتم في الجديد.";
+
+        return false;
+      }
+    }
+
+    if (newStatus === "extra") {
+
+      const value =
+        state.extra["new_" + day] || "";
+
+      if (!value.trim()) {
+
+        message.className = "message error";
+        message.textContent =
+          "⚠️ اكتب الزيادة التي أنجزتها في الجديد.";
+
+        return false;
+      }
+    }
+  }
+
+  const fixToday =
+    getFixationForDay(day);
+
+  if (fixToday) {
+
+    const fixStatus =
+      state.fixStatus[day];
+
+    if (!fixStatus) {
+
+      message.className = "message error";
+      message.textContent =
+        "⚠️ اختر حالة التثبيت أولًا.";
+
+      return false;
+    }
+  }
+
+  return true;
+}
+
+
+/* =========================================================
+   إرسال التقرير
+   ========================================================= */
+
+async function submitReport() {
+
+  if (!validateReport()) {
+    return;
+  }
+
+  const submitButton =
+    document.getElementById("submitButton");
+
+  const message =
+    document.getElementById("reportMessage");
+
+  submitButton.disabled = true;
+  submitButton.textContent =
+    "⏳ جارٍ تسجيل التقرير...";
+
+  const submittedAt =
+    new Date().toISOString();
+
+  const dayDate =
+    getDayDate();
+
+  const treasureStatus =
+    state.treasureStatus[day] || "";
+
+  const newStatus =
+    day <= 18
+      ? state.newStatus[day] || ""
+      : "not_applicable";
+
+  const fixToday =
+    getFixationForDay(day);
+
+  const fixStatus =
+    fixToday
+      ? state.fixStatus[day] || ""
+      : "not_applicable";
+
+  const treasurePartial =
+    state.partials["treasure_" + day] || "";
+
+  const treasureExtra =
+    state.extra["treasure_" + day] || "";
+
+  const newPartial =
+    state.partials["new_" + day] || "";
+
+  const newExtra =
+    state.extra["new_" + day] || "";
+
+  const report =
+    buildReport();
+
+  const payload = {
+
+    day: day,
+
+    date:
+      dayDate
+        ? dayDate.toISOString()
+        : new Date().toISOString(),
+
+    submitted: true,
+
+    submittedAt: submittedAt,
+
+    treasureStatus:
+      treasureStatus,
+
+    treasureRequired:
+      treasurePlan[day - 1] || "",
+
+    treasurePartial:
+      treasurePartial,
+
+    treasureExtra:
+      treasureExtra,
+
+    newStatus:
+      newStatus,
+
+    newRequired:
+      day <= 18
+        ? newPlan[day - 1]
+        : "",
+
+    newPartial:
+      newPartial,
+
+    newExtra:
+      newExtra,
+
+    fixationStatus:
+      fixStatus,
+
+    fixationRequired:
+      fixToday || "",
+
+    report:
+      report
+  };
+
+  try {
+
+    /*
+      نحفظ كل شيء محليًا أولًا،
+      بحيث تظل بيانات التقرير موجودة
+      حتى لو تأخر الاتصال بالسيرفر.
+    */
+
+    state.reportSubmitted[day] = true;
+    state.reportSubmittedAt[day] = submittedAt;
+
+    localStorage.setItem(
+      "qt_lastReport",
+      JSON.stringify(payload)
+    );
+
+    saveState();
+
+    await fetch(
+      GOOGLE_SCRIPT_URL,
+      {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type":
+            "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    message.className =
+      "message success";
+
+    message.textContent =
+      "✅ تم إرسال التقرير وحفظه.";
+
+    document.getElementById("successBox").style.display =
+      "block";
+
+    submitButton.textContent =
+      "✅ تم تسجيل التقرير";
+
+    /*
+      الانتقال لصفحة النجاح بعد الإرسال.
+    */
+
+    setTimeout(function() {
+
+      location.href =
+        "success.html?day=" + day;
+
+    }, 700);
+
+  } catch (error) {
+
+    console.error(error);
+
+    message.className =
+      "message error";
+
+    message.textContent =
+      "⚠️ حدثت مشكلة أثناء إرسال التقرير. تم الاحتفاظ بالبيانات على الجهاز.";
+
+    submitButton.disabled = false;
+
+    submitButton.textContent =
+      "📤 تسجيل تقرير اليوم";
+  }
+}
+
+
+/* =========================================================
+   زر التسجيل
+   ========================================================= */
+
+document
+  .getElementById("submitButton")
+  .addEventListener(
+    "click",
+    submitReport
+  );
+
+
+/* =========================================================
+   التشغيل الأول
+   ========================================================= */
+
+renderDay();
+loadInputs();
+refreshButtons();
+updateStats();
+
+</script>
+
+</body>
+</html>

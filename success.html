@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>التقدم والتشجيع</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div>
+            <h1>🌟 التقدم والتشجيع</h1>
+            <p id="hdrSub">إنجازك اليومي والأسبوعي والشهري</p>
+        </div>
+        <button id="themeButton" class="theme-button">🌙 الوضع الليلي</button>
+    </header>
+
+    <main class="container" id="app">
+        <div class="loading">⏳ جاري التحميل...</div>
+    </main>
+
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+      QT.applyTheme();
+      QT.bindThemeButton("themeButton");
+      var $ = function (id) { return document.getElementById(id); };
+      var app = $("app"), esc = QT.esc, M = null, date = "", tab = "day";
+
+      // منع الرجوع لصفحة التقرير بعد الإرسال: نبقى هنا
+      try {
+        window.history.pushState({ s: 1 }, "", window.location.href);
+        window.onpopstate = function () { window.history.pushState({ s: 1 }, "", window.location.href); };
+      } catch (e) {}
+
+      function dayHtml(d) {
+        if (!d) return '<p class="muted">لا توجد بيانات لهذا التاريخ (قبل البداية أو بعد نهاية الخطة).</p>';
+        if (d.isFriday) {
+          var k = d.kahf;
+          return '<div class="sec f"><h3>🕌 الجمعة — سورة الكهف</h3><div class="line">' + (k ? (k.ok ? "✅ تم" : "❌ لم يتم") : "لم يُسجَّل بعد") + '</div></div>';
+        }
+        var h = '';
+        if (d.status === "today" || d.status === "future") return '<p class="muted">لم يُرسل تقرير هذا اليوم بعد.</p><a class="btn" href="report.html?d=' + d.date + '">📝 املأ التقرير</a>';
+        if (d.t) h += '<div class="sec t"><h3>💎 الكنز</h3><div class="line">' + esc(QT.tSummary(d)) + '</div>' + segList(d) + '</div>';
+        if (d.nw) h += '<div class="sec n"><h3>📖 الجديد</h3><div class="line">' + esc(QT.nSummary(d)) + '</div><div class="line muted">ربع ' + d.nw.q + ' · المطلوب من آية ' + d.nw.from + ' إلى ' + d.nw.to + '</div></div>';
+        if (d.fx) h += '<div class="sec f"><h3>🔄 التثبيت</h3><div class="line">' + esc(QT.fSummary(d)) + ' · ربع ' + d.fx.qs.join(" + ربع ") + '</div></div>';
+        if (d.status === "compensated") h += '<div class="ok-msg">✅ تم تعويض هذا اليوم يوم الجمعة (' + QT.shortDate(d.comp.date) + ')</div>';
+        // ملاحظات التعويض
+        var notes = '';
+        if (M) {
+          var all = M.tDef.concat(M.nDef);
+          for (var i = 0; i < all.length; i++) {
+            if (all[i].date === d.date && all[i].comps && all[i].comps.length) {
+              notes += '<div class="note-comp">✔ تم تعويض ' + (all[i].kind === "t" ? "جزء من الكنز" : "جزء من الجديد") + ' يوم ' + QT.shortDate(all[i].comps[all[i].comps.length - 1].date) + (all[i].rem > 0 ? ' (بقي ' + (all[i].kind === "t" ? QT.fmtU(all[i].rem) + ' ربع' : all[i].rem + ' آية') + ')' : ' — تم بالكامل') + '</div>';
+            }
+          }
+        }
+        return h + notes;
+      }
+      function segList(d) {
+        var h = '';
+        for (var i = 0; i < d.t.segs.length; i++) h += '<div class="line muted">' + esc(QT.segFull(d.t.segs[i])) + '</div>';
+        return h;
+      }
+
+      function draw() {
+        var st = QT.getState();
+        var d = M ? M.byDate[date] : null;
+        var h = '';
+        h += '<div class="bigmsg" id="enc">' + esc(d && !d.isFriday ? QT.encourage(d) : "بارك الله فيك، استمر على بركة الله 🌿") + '</div>';
+        h += '<div class="card"><div class="row" style="justify-content:space-between"><b>📅 ' + QT.prettyDate(date) + (d && !d.isFriday ? ' · اليوم ' + d.n : '') + '</b>' +
+             '<input type="date" id="dpick" class="input" style="max-width:190px" value="' + date + '"></div></div>';
+        h += '<div class="tabs"><button class="tab' + (tab === "day" ? " on" : "") + '" data-tab="day">اليومي</button>' +
+             '<button class="tab' + (tab === "week" ? " on" : "") + '" data-tab="week">الأسبوعي</button>' +
+             '<button class="tab' + (tab === "month" ? " on" : "") + '" data-tab="month">الشهري</button></div>';
+        h += '<div class="card">';
+        if (tab === "day") h += dayHtml(d);
+        if (tab === "week") {
+          var w = QT.weekStats(M, date);
+          h += '<h2>📆 الأسبوع من ' + QT.shortDate(w.from) + ' إلى ' + QT.shortDate(w.to) + '</h2><p class="muted">أيام الحفظ: السبت والاثنين والثلاثاء والخميس (الجمعة والأحد والأربعاء خارج الحساب)</p>' +
+               kv("الأيام الناقصة", w.missed) + kv("💎 الكنز — مرات الزيادة", w.tExtra) + kv("💎 الكنز — مرات النقصان", w.tLess) +
+               kv("📖 الجديد — مرات الزيادة", w.nExtra) + kv("📖 الجديد — مرات النقصان", w.nLess);
+        }
+        if (tab === "month") {
+          var mo = QT.monthStats(M, date);
+          h += '<h2>🗓️ ' + QT.MONTHS[Number(mo.ym.slice(5, 7)) - 1] + ' ' + mo.ym.slice(0, 4) + '</h2>' + kv("الأيام الناقصة هذا الشهر", mo.missed) + kv("أيام الحفظ المحسوبة", mo.days);
+        }
+        h += '</div>';
+        var canEdit = d && !d.isFriday && st.reports[date];
+        h += '<div class="row" style="margin-bottom:20px">';
+        if (canEdit) h += '<a class="btn blue" href="report.html?d=' + date + '&edit=1">✏️ إعادة الإرسال (تعديل التقرير)</a>';
+        h += '<a class="btn" href="plan.html">📋 الخطة</a><a class="btn gray" href="index.html">🏠 الرئيسية</a></div>';
+        app.innerHTML = h;
+      }
+      function kv(a, b) { return '<div class="kv"><span>' + a + '</span><strong>' + b + '</strong></div>'; }
+
+      app.onclick = function (ev) {
+        ev = ev || window.event; var t = ev.target || ev.srcElement;
+        var tb = t.getAttribute && t.getAttribute("data-tab");
+        if (tb) { tab = tb; draw(); }
+      };
+      app.onchange = function (ev) {
+        ev = ev || window.event; var t = ev.target || ev.srcElement;
+        if (t.id === "dpick" && QT.isYmd(t.value)) { date = t.value; draw(); }
+      };
+
+      QT.init(function () {
+        var st = QT.getState();
+        date = QT.getParam("d");
+        if (!QT.isYmd(date)) date = QT.todayStr();
+        if (!st.start) { app.innerHTML = '<div class="card"><h2>📅 حدّد تاريخ بداية الخطة أولًا</h2><a class="btn" href="index.html">الرئيسية</a></div>'; return; }
+        M = QT.compute(st, QT.todayStr());
+        draw();
+      }, 6000);
+    })();
+    </script>
+</body>
+</html>

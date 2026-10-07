@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>متابعة حفظ القرآن الكريم</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="header">
+
+    <div>
+        <h1>📖 متابعة حفظ القرآن الكريم</h1>
+        <p>تابع حفظك اليومي وحافظ على الاستمرار 🌱</p>
+    </div>
+
+    <button id="themeButton" class="theme-button">
+        🌙 الوضع الليلي
+    </button>
+
+</header>
+
+
+<main class="container">
+
+    <!-- اليوم الحالي -->
+
+    <section class="day-section">
+
+        <div>
+            <span class="small-title">الخطة الحالية</span>
+
+            <h2 id="currentDay">
+                اليوم 1 من 90
+            </h2>
+
+            <p id="dayDescription">
+                بداية خطة حفظ القرآن الكريم
+            </p>
+        </div>
+
+        <div class="day-progress">
+            <strong id="dayPercentage">1%</strong>
+            <span>من الخطة</span>
+        </div>
+
+    </section>
+
+
+    <!-- الإحصائيات -->
+
+    <section class="stats">
+
+        <div class="stat-card">
+
+            <span>📊</span>
+
+            <h3>نسبة الإنجاز</h3>
+
+            <strong id="progressText">0%</strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <span>🔥</span>
+
+            <h3>أيام متتالية</h3>
+
+            <strong id="streakText">0</strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <span>📖</span>
+
+            <h3>السور المكتملة</h3>
+
+            <strong id="completedText">0</strong>
+
+        </div>
+
+    </section>
+
+
+    <!-- شريط التقدم -->
+
+    <section class="progress-section">
+
+        <div class="section-title">
+
+            <h2>تقدمك في الحفظ</h2>
+
+            <span id="progressLabel">
+                0 من 114 سورة
+            </span>
+
+        </div>
+
+        <div class="progress-bar">
+
+            <div id="progressBar"></div>
+
+        </div>
+
+        <p id="progressMessage">
+            ابدأ بتسجيل أول إنجاز لك اليوم 💪
+        </p>
+
+    </section>
+
+
+    <!-- حفظ اليوم -->
+
+    <section class="today-section">
+
+        <div class="section-title">
+
+            <div>
+                <h2>📝 حفظ اليوم</h2>
+
+                <p>
+                    عند الانتهاء من مهام اليوم اضغط على الزر.
+                </p>
+            </div>
+
+        </div>
+
+        <button id="todayButton" class="today-button">
+            ✅ سجلت حفظ اليوم
+        </button>
+
+        <p id="todayStatus" class="today-status"></p>
+
+    </section>
+
+
+    <!-- أزرار الصفحات -->
+
+    <section class="navigation-section">
+
+        <button
+            class="main-page-button"
+            onclick="openHifzPage()">
+
+            📚 الحفظ بالتفصيل
+
+        </button>
+
+
+        <button
+            class="reports-button"
+            onclick="openReportsPage()">
+
+            📊 التقارير
+
+        </button>
+
+
+        <button
+            class="main-page-button"
+            onclick="window.location.href='plan.html'">
+
+            📖 خطة الحفظ
+
+        </button>
+
+    </section>
+
+
+    <!-- البحث -->
+
+    <section class="search-section">
+
+        <h2>🔎 البحث عن سورة</h2>
+
+        <input
+            type="text"
+            id="searchInput"
+            placeholder="اكتب اسم السورة..."
+            autocomplete="off">
+
+    </section>
+
+
+    <!-- السور -->
+
+    <section class="surahs-section">
+
+        <div class="section-title">
+
+            <div>
+                <h2>📚 سور القرآن الكريم</h2>
+
+                <p>
+                    اضغط على السورة لمعرفة حالتها في الخطة.
+                </p>
+            </div>
+
+        </div>
+
+
+        <div
+            id="surahList"
+            class="surah-list">
+
+        </div>
+
+    </section>
+
+
+    <!-- التذكير -->
+
+    <section class="reminder-section">
+
+        <h2>⏰ التذكير اليومي</h2>
+
+        <p>
+            اختر الوقت الذي تريد أن تتذكر فيه الحفظ.
+        </p>
+
+        <div class="reminder-controls">
+
+            <input
+                type="time"
+                id="reminderTime"
+                value="22:00">
+
+            <button id="saveReminderButton">
+                💾 حفظ وقت التذكير
+            </button>
+
+        </div>
+
+        <p id="reminderStatus"></p>
+
+    </section>
+
+</main>
+
+
+<footer>
+
+    <p>📖 متابعة حفظ القرآن الكريم</p>
+
+    <p>
+        بياناتك محفوظة على هذا الجهاز
+    </p>
+
+</footer>
+
+
+<script src="script.js"></script>
+
+</body>
+
+</html>
