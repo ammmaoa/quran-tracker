@@ -286,7 +286,7 @@ var SLOTS=[
      ------------------------------------------------------------------- */
   var FR = { 3: "¼", 4: "⅓", 6: "½", 8: "⅔", 9: "¾" };
   function gcd(a, b) { return b ? gcd(b, a % b) : a; }
-  function fmtU(t) {
+  function fmtRaw(t) {
     t = Math.round(t);
     if (t <= 0) return "0";
     var w = Math.floor(t / 12), r = t % 12, f = "";
@@ -298,8 +298,10 @@ var SLOTS=[
     if (w) return String(w);
     return f;
   }
+  // نفس القيمة لكن بعلامة اتجاه تجعل الكسر يظهر صحيحًا (2¼ وليس ¼2) داخل النص العربي
+  function fmtU(t) { return "\u200E" + fmtRaw(t) + "\u200E"; }
   function normDigits(s) {
-    return String(s).replace(/[٠-٩]/g, function (d) { return String(d.charCodeAt(0) - 1632); })
+    return String(s).replace(/[\u200E\u200F]/g, "").replace(/[٠-٩]/g, function (d) { return String(d.charCodeAt(0) - 1632); })
                     .replace(/٫/g, ".").replace(/[،,]/g, ".").replace(/⁄/g, "/");
   }
   function parseU(str) {
@@ -960,7 +962,7 @@ var SLOTS=[
     SURAHS: SURAHS, SLOTS: SLOTS, MAIDA: MAIDA, UNITS: UNITS, TOTAL12: TOTAL12,
     esc: esc, ymd: ymd, parseYmd: parseYmd, addDays: addDays, dowOf: dowOf, todayStr: todayStr, isYmd: isYmd,
     prettyDate: prettyDate, shortDate: shortDate, weekStart: weekStart, getParam: getParam, DAYNAMES: DAYNAMES, MONTHS: MONTHS,
-    isRest: isRest, fmtU: fmtU, parseU: parseU, normDigits: normDigits,
+    isRest: isRest, fmtU: fmtU, fmtRaw: fmtRaw, parseU: parseU, normDigits: normDigits,
     unitInfo: unitInfo, segsOf: segsOf, segLabel: segLabel, segFull: segFull, partText: partText,
     init: init, pull: pull, push: push, getState: getState, setStart: setStart, putReport: putReport, putKahf: putKahf, addComp: addComp,
     emptyState: emptyState, merge: merge, hasServer: hasServer,
@@ -1024,28 +1026,295 @@ QT.renderComp = function (box, M, enabled, onChange) {
   box.onclick = function (ev) {
     ev = ev || window.event;
     var t = ev.target || ev.srcElement;
-    while (t && t !== box && !(t.getAttribute && t.getAttribute("data-act"))) t = t.parentNode;
+    while (t && t !== box && !(t.getAttribute && (t.getAttribute("data-act") || t.getAttribute("data-pick")))) t = t.parentNode;
     if (!t || t === box) return;
+    if (t.getAttribute("data-pick")) {
+      if (!enabled) return;
+      var pk = t.getAttribute("data-pick");
+      QT.addComp(pk, t.getAttribute("data-ref"), Number(t.getAttribute("data-amt")));
+      QT.toast("تم تسجيل الجزء ✅", "ok2"); if (onChange) onChange(); return;
+    }
     var act = t.getAttribute("data-act"), ref = t.getAttribute("data-ref");
     if (!enabled) return;
     if (act === "day") { QT.addComp("day", ref, 0); QT.toast("تم تعويض اليوم ✅", "ok2"); if (onChange) onChange(); return; }
     if (act === "t-full") { QT.addComp("t", ref, Number(t.getAttribute("data-amt"))); QT.toast("تم تعويض الكنز ✅", "ok2"); if (onChange) onChange(); return; }
     if (act === "n-full") { QT.addComp("n", ref, Number(t.getAttribute("data-amt"))); QT.toast("تم تعويض الجديد ✅", "ok2"); if (onChange) onChange(); return; }
-    if (act === "t-part") {
-      var rem = Number(t.getAttribute("data-rem"));
-      var v = window.prompt("كم ربعًا حفظت من هذا النقص؟ (مثل ½ أو ¾ أو 1 أو 1½) — الحد الأقصى أقل من " + QT.fmtU(rem), "");
-      if (v === null) return;
-      var a = QT.parseU(v);
-      if (a === null || a <= 0 || a >= rem) { QT.toast("اكتب مقدارًا صحيحًا أقل من " + QT.fmtU(rem), "err2"); return; }
-      QT.addComp("t", ref, a); QT.toast("تم تسجيل الجزء، وبقي " + QT.fmtU(rem - a) + " ✅", "ok2"); if (onChange) onChange(); return;
+    if (act === "t-part" || act === "n-part") {
+      // لوحة اختيارات (بدل الكتابة): تظهر تحت السطر
+      var row = t; while (row && row !== box && (" " + row.className + " ").indexOf(" dayline ") < 0) row = row.parentNode;
+      if (!row || row === box) return;
+      var old = row.getElementsByClassName("pickpanel");
+      if (old.length) { row.removeChild(old[0]); return; }
+      var pn = document.createElement("div"); pn.className = "pickpanel";
+      pn.style.cssText = "flex-basis:100%;width:100%;margin-top:8px";
+      var h = "", k;
+      if (act === "t-part") {
+        var rem = Number(t.getAttribute("data-rem")), list = ["¼", "½", "1", "1¼", "1½"];
+        h = '<div class="muted">كم ربعًا حفظت من هذا النقص؟</div><div class="chips">';
+        for (k = 0; k < list.length; k++) { var uv = QT.parseU(list[k]); if (uv < rem) h += '<button type="button" class="chip" data-pick="t" data-ref="' + ref + '" data-amt="' + uv + '" style="direction:ltr">' + list[k] + '</button>'; }
+        h += '</div>';
+      } else {
+        var f = Number(t.getAttribute("data-from")), to = Number(t.getAttribute("data-to"));
+        h = '<div class="muted">آخر آية حفظتها؟</div><div class="chips">';
+        for (k = f; k < to && k < f + 40; k++) h += '<button type="button" class="chip" data-pick="n" data-ref="' + ref + '" data-amt="' + (k - f + 1) + '">' + k + '</button>';
+        h += '</div>';
+      }
+      pn.innerHTML = h; row.style.flexWrap = "wrap"; row.appendChild(pn);
+      return;
     }
-    if (act === "n-part") {
-      var f = Number(t.getAttribute("data-from")), to = Number(t.getAttribute("data-to"));
-      var v2 = window.prompt("اكتب آخر آية حفظتها (بين " + f + " و " + (to - 1) + ")", "");
-      if (v2 === null) return;
-      var e = parseInt(QT.normDigits(v2), 10);
-      if (isNaN(e) || e < f || e >= to) { QT.toast("اكتب رقم آية بين " + f + " و " + (to - 1), "err2"); return; }
-      QT.addComp("n", ref, e - f + 1); QT.toast("تم تسجيل الجزء ✅", "ok2"); if (onChange) onChange(); return;
-    }
+    if (act === "pick") { /* يُعالَج أدناه */ }
   };
+};
+
+/* =====================================================================
+   نموذج التقرير (يُستعمل في report.html وفي نافذة صفحة الخطة)
+   QT.openReport(عنصر, "YYYY-MM-DD", { edit, fromPlan, noNav, setTitle, setSub, onDone })
+   ===================================================================== */
+QT.openReport = function (app, date, hooks) {
+  hooks = hooks || {};
+  var $ = function (id) { return document.getElementById(id); };
+  (function () {
+      var esc = QT.esc;
+      var M = null, day = null, form = {}, busy = false;
+
+      /* ---------- أدوات العرض ---------- */
+      var FOUR = [["full", "✅", "تم بالكامل"], ["extra", "➕", "تم وزيادة"], ["partial", "🟡", "جزئي"], ["none", "❌", "لم يتم"]];
+      var TWO = [["done", "✅", "تم"], ["none", "❌", "لم يتم"]];
+      function optBtns(sec, list, two) {
+        var cur = form[sec] && form[sec].st, h = '<div class="opts' + (two ? ' two' : '') + '">', i;
+        for (i = 0; i < list.length; i++) {
+          h += '<button type="button" class="opt ' + list[i][0] + (cur === list[i][0] ? ' sel' : '') + '" data-sec="' + sec + '" data-st="' + list[i][0] + '"><span>' + list[i][1] + '</span>' + list[i][2] + '</button>';
+        }
+        return h + '</div>';
+      }
+      function chipGrid(sec, vals, cur) {
+        var h = '<div class="grid">';
+        for (var i = 0; i < vals.length; i++) {
+          h += '<button type="button" class="ch' + (String(cur) === String(vals[i][0]) ? ' sel' : '') + '" data-chip="' + sec + '" data-v="' + vals[i][0] + '">' + vals[i][1] + '</button>';
+        }
+        return h + '</div>';
+      }
+      function head(ic, title, sub) {
+        return '<div class="box-h"><div class="ico">' + ic + '</div><div><h3>' + title + '</h3>' + (sub ? '<small>' + sub + '</small>' : '') + '</div></div>';
+      }
+
+      // اختيارات الكنز: زيادة من 2 إلى 4 ، جزئي من ¼ إلى 1½ (أقل من المطلوب)
+      var EXTRA_T = ["2", "2¼", "2½", "3", "3¼", "3½", "4"];
+      var PART_T = ["¼", "½", "1", "1¼", "1½"];
+
+      function treasureBox() {
+        var t = day.t, h = '<section class="box t">' + head("💎", "الكنز", "المطلوب اليوم: " + QT.fmtU(t.req) + " ربع"), i;
+        for (i = 0; i < t.segs.length; i++) {
+          var sg = t.segs[i], inf = sg.info;
+          h += '<div class="item"><span class="pill">ربع ' + sg.u + '</span><span class="name">' + esc(inf.title) + '</span>';
+          if (!sg.whole) h += ' <span class="tag">' + (sg.a === 0 ? "أول " : sg.b === 12 ? "آخر " : "جزء ") + QT.fmtU(sg.b - sg.a) + '</span>';
+          if (inf.sub && inf.sub !== "كاملة") h += '<br><span class="mu">يبدأ بـ</span> <span class="ph">«' + esc(inf.sub) + '»</span>';
+          if (inf.ayat) h += ' <span class="mu">(آيات ' + inf.ayat + ')</span>';
+          if (inf.parts.length > 2) h += '<br><span class="mu">' + esc(inf.parts.map(function (p) { return p[0]; }).join("، ")) + '</span>';
+          h += '</div>';
+        }
+        h += optBtns("t", FOUR, false);
+        var st = form.t && form.t.st, cur = form.t && form.t.amtText;
+        if (st === "extra") {
+          var ev = []; for (i = 0; i < EXTRA_T.length; i++) ev.push([EXTRA_T[i], EXTRA_T[i]]);
+          h += '<div class="pick"><h4>➕ كم ربعًا زدت؟</h4>' + chipGrid("t", ev, cur) + '</div>';
+        }
+        if (st === "partial") {
+          var pv = [];
+          for (i = 0; i < PART_T.length; i++) if (QT.parseU(PART_T[i]) < t.req) pv.push([PART_T[i], PART_T[i]]);
+          h += '<div class="pick p"><h4>🟡 كم ربعًا حفظت؟</h4>' + (pv.length ? chipGrid("t", pv, cur) : '<p class="hint">المطلوب صغير، اختر «تم بالكامل» أو «لم يتم».</p>') + '</div>';
+        }
+        return h + '</section>';
+      }
+      function newBox() {
+        var n = day.nw, q = n.qi, h = '<section class="box n">' + head("📖", "الجديد", "سورة المائدة · اليوم " + (n.ph === "A" ? "الأول" : "الثاني") + " من الربع"), i;
+        h += '<div class="item"><span class="pill g">ربع ' + q.q + '</span><span class="name">من آية ' + n.from + ' إلى آية ' + n.to + '</span> <span class="mu">(' + n.cnt + ' آيات)</span>' +
+             '<br><span class="mu">الربع يبدأ بـ</span> <span class="ph">«' + esc(q.ph) + '»</span> <span class="mu">(آيات ' + q.s + '–' + q.e + ')</span></div>';
+        h += optBtns("nw", FOUR, false);
+        var st = form.nw && form.nw.st, cur = form.nw && form.nw.toText;
+        if (st === "extra") {
+          var ev = [], mx = Math.min(n.to + 15, 120);
+          for (i = n.to + 1; i <= mx; i++) ev.push([i, i]);
+          h += '<div class="pick"><h4>➕ إلى أي آية وصلت؟ (بعد آية ' + n.to + ')</h4>' + (ev.length ? chipGrid("nw", ev, cur) : '<p class="hint">لا توجد آيات بعدها.</p>') + '</div>';
+        }
+        if (st === "partial") {
+          var pv = [];
+          for (i = n.from; i < n.to; i++) pv.push([i, i]);
+          h += '<div class="pick p"><h4>🟡 آخر آية حفظتها (من آية ' + n.from + ')</h4>' + (pv.length ? chipGrid("nw", pv, cur) : '<p class="hint">المطلوب آية واحدة، اختر «تم بالكامل» أو «لم يتم».</p>') + '</div>';
+        }
+        return h + '</section>';
+      }
+      function fixBox() {
+        var f = day.fx, h = '<section class="box f">' + head("🔄", "التثبيت", "مراجعة من المائدة"), i;
+        for (i = 0; i < f.qs.length; i++) {
+          var q = QT.MAIDA[f.qs[i] - 1];
+          h += '<div class="item"><span class="pill g">ربع ' + q.q + '</span><span class="name">من آية ' + q.s + ' إلى ' + q.e + '</span><br><span class="mu">يبدأ بـ</span> <span class="ph">«' + esc(q.ph) + '»</span></div>';
+        }
+        return h + optBtns("fx", TWO, true) + '</section>';
+      }
+      function wholeBox() {
+        var cur = form.day || "";
+        return '<section class="box">' + head("📌", "حالة اليوم بالكامل", "اختياري — اختصار لكل الأقسام") +
+          '<div class="opts two"><button type="button" class="opt full' + (cur === "full" ? " sel" : "") + '" data-day="full"><span>✅</span>تم المطلوب</button>' +
+          '<button type="button" class="opt none' + (cur === "none" ? " sel" : "") + '" data-day="none"><span>❌</span>لم يتم</button></div></section>';
+      }
+
+      /* ---------- مزامنة الاختيار الكلي ---------- */
+      function syncDay() {
+        var all = [], i;
+        if (day.t) all.push(form.t && form.t.st);
+        if (day.nw) all.push(form.nw && form.nw.st);
+        if (day.fx) all.push(form.fx && form.fx.st);
+        var full = true, none = true;
+        for (i = 0; i < all.length; i++) {
+          if (!(all[i] === "full" || all[i] === "done")) full = false;
+          if (all[i] !== "none") none = false;
+        }
+        form.day = (all.length && full) ? "full" : (all.length && none) ? "none" : "";
+      }
+      function setAll(v) {
+        if (day.t) form.t = { st: v === "full" ? "full" : "none", amtText: "" };
+        if (day.nw) form.nw = { st: v === "full" ? "full" : "none", toText: "" };
+        if (day.fx) form.fx = { st: v === "full" ? "done" : "none" };
+        form.day = v;
+      }
+
+      /* ---------- بناء الصفحة ---------- */
+      function draw() {
+        var h = '<div class="steps"><b id="stepTxt"></b><div class="bar"><i id="stepBar"></i></div></div>';
+        if (day.t) h += treasureBox();
+        if (day.nw) h += newBox();
+        if (day.fx) h += fixBox(); else h += '<section class="box f">' + head("🔄", "التثبيت", "") + '<div class="item mu">لا يوجد تثبيت اليوم (لم يكتمل ربع جديد بعد).</div></section>';
+        h += wholeBox();
+        h += '<div class="errbox" id="errBox"></div>';
+        h += '<div class="dock"><button type="button" id="sendBtn" class="send">📤 تسجيل تقرير اليوم</button></div>';
+        h += '<p class="hint" style="text-align:center">لا يتم احتساب أي شيء إلا بعد الضغط على «تسجيل تقرير اليوم».</p>';
+        h += navBar();
+        app.innerHTML = h;
+        updateBtn();
+      }
+      function navBar() {
+        if (hooks.noNav) return "";
+        return '<nav class="navbar"><a href="plan.html"><span>📋</span>الخطة</a><a href="index.html"><span>🏠</span>الرئيسية</a><a href="success.html?d=' + date + '"><span>📊</span>التقدم</a></nav>';
+      }
+      function check() { return QT.buildReport(day, form); }
+      function updateBtn() {
+        var b = $("sendBtn"); if (!b) return;
+        var r = check();
+        b.className = "send" + (r.ok ? "" : " off");
+        var total = (day.t ? 1 : 0) + (day.nw ? 1 : 0) + (day.fx ? 1 : 0), got = 0;
+        function ok(x) { return x && x.st && !((x.st === "extra" || x.st === "partial") && !(x.amtText || x.toText)); }
+        if (day.t && ok(form.t)) got++;
+        if (day.nw && ok(form.nw)) got++;
+        if (day.fx && ok(form.fx)) got++;
+        if ($("stepTxt")) { $("stepTxt").innerHTML = "اكتمل " + got + " من " + total; $("stepBar").style.width = (total ? Math.round(got / total * 100) : 0) + "%"; }
+      }
+
+      app.onclick = function (ev) {
+        ev = ev || window.event;
+        var t = ev.target || ev.srcElement;
+        while (t && t !== app && !(t.getAttribute && (t.getAttribute("data-sec") || t.getAttribute("data-day") || t.getAttribute("data-chip") || t.id === "sendBtn"))) t = t.parentNode;
+        if (!t || t === app || busy) return;
+        var g = function (a) { return t.getAttribute(a); };
+        var sec = g("data-sec");
+        if (sec) {
+          var old = form[sec] || {};
+          form[sec] = { st: g("data-st"), amtText: (g("data-st") === old.st ? old.amtText : ""), toText: (g("data-st") === old.st ? old.toText : "") };
+          syncDay(); draw(); return;
+        }
+        if (g("data-day")) { setAll(g("data-day")); draw(); return; }
+        if (g("data-chip")) {
+          var cs = g("data-chip"), v = g("data-v");
+          form[cs] = form[cs] || {};
+          if (cs === "t") form.t.amtText = v; else form.nw.toText = v;
+          var sibs = t.parentNode.getElementsByTagName("button");
+          for (var i = 0; i < sibs.length; i++) sibs[i].className = sibs[i].className.replace(/ ?sel/g, "");
+          t.className += " sel"; updateBtn(); return;
+        }
+        if (t.id === "sendBtn") send();
+      };
+
+      function send() {
+        var r = check(), eb = $("errBox");
+        if (!r.ok) {
+          var h = '<div class="err"><b>لا يمكن الإرسال، ناقصك:</b><br>';
+          for (var i = 0; i < r.errors.length; i++) h += "• " + esc(r.errors[i]) + "<br>";
+          eb.innerHTML = h + '</div>';
+          try { eb.scrollIntoView(); } catch (e) {}
+          return;
+        }
+        busy = true; eb.innerHTML = '<div class="ok-msg">⏳ جاري الإرسال...</div>';
+        $("sendBtn").className = "send off";
+        var rep = r.report, st = QT.getState();
+        st.reports[date] = rep;
+        var M2 = QT.compute(st, QT.todayStr()), d2 = M2.byDate[date];
+        var text = QT.reportText(M2, d2);
+        var finished = false;
+        function go() { if (finished) return; finished = true; try { window.sessionStorage.setItem("qt_just", date); } catch (e) {} goDone(); }
+        QT.putReport(date, rep, { notify: text, date: date, n: day.n, kind: "report" }, function () { go(); });
+        setTimeout(go, 7000);
+      }
+
+      /* ---------- الجمعة ---------- */
+      function fridayPage() {
+        var k = QT.getState().kahf[date], sel = k ? (k.ok ? "done" : "none") : "";
+        var h = '<section class="box f">' + head("🕌", "سورة الكهف", "قراءة أو تسميع — لا تدخل في الخطة ولا تُحسب نقصًا") +
+          '<div class="opts two"><button type="button" class="opt full' + (sel === "done" ? " sel" : "") + '" data-k="done"><span>✅</span>تم</button>' +
+          '<button type="button" class="opt none' + (sel === "none" ? " sel" : "") + '" data-k="none"><span>❌</span>لم يتم</button></div></section>' +
+          '<details class="acc"><summary>🧩 تعويض النواقص (اختياري)</summary><div class="body" id="compBox"></div></details>' +
+          '<div class="dock"><button type="button" id="kSend" class="send">📤 تسجيل تقرير اليوم</button></div>' + navBar();
+        app.innerHTML = h;
+        var chosen = sel;
+        function refreshComp() { M = QT.compute(QT.getState(), QT.todayStr()); QT.renderComp($("compBox"), M, QT.dowOf(QT.todayStr()) === 5, refreshComp); }
+        refreshComp();
+        app.onclick = function (ev) {
+          ev = ev || window.event; var t = ev.target || ev.srcElement;
+          while (t && t !== app && !(t.getAttribute && (t.getAttribute("data-k") || t.id === "kSend"))) t = t.parentNode;
+          if (!t || t === app) return;
+          var kk = t.getAttribute("data-k");
+          if (kk) { chosen = kk; var bs = app.getElementsByClassName("opt"); for (var i = 0; i < bs.length; i++) bs[i].className = bs[i].className.replace(/ ?sel/g, ""); t.className += " sel"; return; }
+          if (t.id === "kSend") {
+            if (!chosen) { QT.toast("اختر تم أو لم يتم لسورة الكهف", "err2"); return; }
+            QT.getState().kahf[date] = { ok: chosen === "done", at: new Date().getTime() };
+            QT.putReport("fri-" + date, { v: 2, friday: true, kahf: chosen }, { notify: "🕌 الجمعة " + QT.shortDate(date) + " — سورة الكهف: " + (chosen === "done" ? "✅ تم" : "❌ لم يتم"), date: date, kind: "friday" }, function () {});
+            QT.putKahf(date, chosen === "done");
+            try { window.sessionStorage.setItem("qt_just", date); } catch (e) {}
+            setTimeout(function () { goDone(); }, 1200);
+            QT.toast("جاري الإرسال...", "ok2");
+          }
+        };
+      }
+
+      function msgPage(title, text, link) {
+        app.innerHTML = '<div class="box msg"><h2>' + title + '</h2><p class="mu">' + text + '</p>' + (link ? '<a class="btn" href="' + link[0] + '">' + link[1] + '</a>' : '') + '</div>' + navBar();
+      }
+
+      /* ---------- التشغيل ---------- */
+      var st = QT.getState();
+      var setTitle = hooks.setTitle || function () {}, setSub = hooks.setSub || function () {};
+      function goDone() { try { window.sessionStorage.setItem("qt_just", date); } catch (e) {} if (hooks.onDone) hooks.onDone(date); else window.location.replace("success.html?d=" + date); }
+      if (!st.start) { setTitle("تقرير اليوم"); msgPage("📅 حدّد تاريخ بداية الخطة أولًا", "افتح الصفحة الرئيسية واختر تاريخ البداية.", ["index.html", "الذهاب للرئيسية"]); return; }
+      M = QT.compute(st, QT.todayStr());
+      setSub(QT.prettyDate(date));
+      var d = M.byDate[date];
+      if (QT.isRest(date)) { setTitle("يوم راحة 🌿"); msgPage("🌿 يوم راحة", "الأحد والأربعاء بلا مهام ولا تقرير.", ["plan.html", "📋 الخطة"]); return; }
+      if (date < st.start || !d) { setTitle("تقرير اليوم"); msgPage("لا يوجد حفظ في هذا التاريخ", "هذا اليوم قبل بداية الخطة أو بعد نهايتها.", ["plan.html", "📋 الخطة"]); return; }
+      if (d.isFriday) { setTitle("يوم الجمعة 🕌"); fridayPage(); return; }
+      if (date > QT.todayStr()) { setTitle("اليوم " + d.n); msgPage("⏳ هذا اليوم لم يأتِ بعد", "يمكنك ملء تقرير اليوم عند حلول موعده.", ["plan.html", "📋 الخطة"]); return; }
+      var edit = !!hooks.edit;
+      if (st.reports[date] && !edit) { goDone(); return; }
+      if (!hooks.fromPlan) { try { if (window.sessionStorage.getItem("qt_just") === date && !edit) { goDone(); return; } } catch (e) {} }
+      day = d;
+      if (st.reports[date]) {
+        var copy = JSON.parse(JSON.stringify(st)); delete copy.reports[date];
+        var Mx = QT.compute(copy, date); day = Mx.byDate[date] || d;
+        var rp = st.reports[date];
+        if (day.t && rp.t) form.t = { st: rp.t.st, amtText: rp.t.amt ? QT.fmtRaw(rp.t.amt) : "" };
+        if (day.nw && rp.nw) form.nw = { st: rp.nw.st, toText: rp.nw.to ? String(rp.nw.to) : "" };
+        if (day.fx && rp.fx) form.fx = { st: rp.fx.st };
+        syncDay();
+      }
+      setTitle("اليوم " + day.n);
+      draw();
+  })();
 };

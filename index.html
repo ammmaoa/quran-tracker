@@ -1,265 +1,95 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0f5c3a">
     <title>متابعة حفظ القرآن الكريم</title>
-
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap">
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<header class="header">
-
-    <div>
-        <h1>📖 متابعة حفظ القرآن الكريم</h1>
-        <p>تابع حفظك اليومي وحافظ على الاستمرار 🌱</p>
-    </div>
-
-    <button id="themeButton" class="theme-button">
-        🌙 الوضع الليلي
-    </button>
-
-</header>
-
-
-<main class="container">
-
-    <!-- اليوم الحالي -->
-
-    <section class="day-section">
-
-        <div>
-            <span class="small-title">الخطة الحالية</span>
-
-            <h2 id="currentDay">
-                اليوم 1 من 90
-            </h2>
-
-            <p id="dayDescription">
-                بداية خطة حفظ القرآن الكريم
-            </p>
+    <header class="top">
+        <div class="top-row">
+            <span class="back">📖 حفظ القرآن</span>
+            <button id="themeButton" class="theme-button">🌙 الوضع الليلي</button>
         </div>
-
-        <div class="day-progress">
-            <strong id="dayPercentage">1%</strong>
-            <span>من الخطة</span>
+        <div class="hello">
+            <small>السلام عليكم ورحمة الله</small>
+            <h1>متابعة حفظ القرآن الكريم</h1>
+            <span class="gold">تابع حفظك اليومي وحافظ على الاستمرار 🌱</span>
         </div>
+    </header>
 
-    </section>
+    <main class="wrap">
 
-
-    <!-- الإحصائيات -->
-
-    <section class="stats">
-
-        <div class="stat-card">
-
-            <span>📊</span>
-
-            <h3>نسبة الإنجاز</h3>
-
-            <strong id="progressText">0%</strong>
-
-        </div>
-
-
-        <div class="stat-card">
-
-            <span>🔥</span>
-
-            <h3>أيام متتالية</h3>
-
-            <strong id="streakText">0</strong>
-
-        </div>
-
-
-        <div class="stat-card">
-
-            <span>📖</span>
-
-            <h3>السور المكتملة</h3>
-
-            <strong id="completedText">0</strong>
-
-        </div>
-
-    </section>
-
-
-    <!-- شريط التقدم -->
-
-    <section class="progress-section">
-
-        <div class="section-title">
-
-            <h2>تقدمك في الحفظ</h2>
-
-            <span id="progressLabel">
-                0 من 114 سورة
-            </span>
-
-        </div>
-
-        <div class="progress-bar">
-
-            <div id="progressBar"></div>
-
-        </div>
-
-        <p id="progressMessage">
-            ابدأ بتسجيل أول إنجاز لك اليوم 💪
-        </p>
-
-    </section>
-
-
-    <!-- حفظ اليوم -->
-
-    <section class="today-section">
-
-        <div class="section-title">
-
-            <div>
-                <h2>📝 حفظ اليوم</h2>
-
-                <p>
-                    عند الانتهاء من مهام اليوم اضغط على الزر.
-                </p>
+        <section id="startBox" class="card" style="display:none">
+            <h2>📅 متى تبدأ الخطة؟</h2>
+            <p class="muted">اختر تاريخ أول يوم حفظ. (الأحد والأربعاء راحة بلا مهام، والجمعة للكهف والتعويض؛ فلو اخترت يوم راحة تبدأ الخطة من أقرب يوم حفظ).</p>
+            <div class="row">
+                <input type="date" id="startInput" class="input" style="max-width:220px">
+                <button id="startSave" class="btn">💾 حفظ وبدء الخطة</button>
             </div>
+        </section>
 
-        </div>
-
-        <button id="todayButton" class="today-button">
-            ✅ سجلت حفظ اليوم
-        </button>
-
-        <p id="todayStatus" class="today-status"></p>
-
-    </section>
-
-
-    <!-- أزرار الصفحات -->
-
-    <section class="navigation-section">
-
-        <button
-            class="main-page-button"
-            onclick="openHifzPage()">
-
-            📚 الحفظ بالتفصيل
-
-        </button>
-
-
-        <button
-            class="reports-button"
-            onclick="openReportsPage()">
-
-            📊 التقارير
-
-        </button>
-
-
-        <button
-            class="main-page-button"
-            onclick="window.location.href='plan.html'">
-
-            📖 خطة الحفظ
-
-        </button>
-
-    </section>
-
-
-    <!-- البحث -->
-
-    <section class="search-section">
-
-        <h2>🔎 البحث عن سورة</h2>
-
-        <input
-            type="text"
-            id="searchInput"
-            placeholder="اكتب اسم السورة..."
-            autocomplete="off">
-
-    </section>
-
-
-    <!-- السور -->
-
-    <section class="surahs-section">
-
-        <div class="section-title">
-
+        <section class="day-section">
             <div>
-                <h2>📚 سور القرآن الكريم</h2>
-
-                <p>
-                    اضغط على السورة لمعرفة حالتها في الخطة.
-                </p>
+                <div class="small-title">اليوم</div>
+                <h2 id="currentDay">جاري التحميل...</h2>
+                <p id="dayDescription"></p>
+                <div id="todayTasks" class="muted" style="white-space:pre-line;line-height:1.9"></div>
             </div>
+            <div class="day-progress">
+                <strong id="dayPercentage">0%</strong>
+                <span class="small-title">من الخطة</span>
+            </div>
+        </section>
 
-        </div>
+        <section class="navigation-section">
+            <a class="nav-btn" href="plan.html">📋<br>خطة الحفظ</a>
+            <a class="nav-btn blue" id="reportLink" href="report.html">📝<br>تقرير اليوم</a>
+            <a class="nav-btn gray" href="success.html">📊<br>التقدم والتشجيع</a>
+        </section>
 
+        <section class="stats">
+            <div class="stat-card"><span>📊</span><h3>نسبة الإنجاز</h3><strong id="progressText">0%</strong></div>
+            <div class="stat-card"><span>🔥</span><h3>أيام متتالية</h3><strong id="streakText">0</strong></div>
+            <div class="stat-card"><span>📖</span><h3>السور المكتملة</h3><strong id="completedText">0</strong></div>
+        </section>
 
-        <div
-            id="surahList"
-            class="surah-list">
+        <section class="progress-section">
+            <div class="section-title">
+                <h2>تقدمك في الحفظ</h2>
+                <span id="progressLabel" class="muted"></span>
+            </div>
+            <div class="progress-bar"><div id="progressBar"></div></div>
+            <p id="progressMessage">ابدأ بتسجيل أول إنجاز لك اليوم 💪</p>
+        </section>
 
-        </div>
+        <section class="search-section">
+            <h2>🔎 البحث عن سورة</h2>
+            <input type="text" id="searchInput" placeholder="اكتب اسم السورة...">
+        </section>
 
-    </section>
+        <section class="surahs-section">
+            <h2>📚 سور القرآن الكريم</h2>
+            <div id="surahList" class="surah-list"></div>
+        </section>
 
+        <section class="reminder-section">
+            <h2>⏰ التذكير اليومي</h2>
+            <p class="muted">يصلك تذكير على الواتساب الساعة 6 مساءً (برابط تقرير اليوم)، وإن لم تملأ التقرير يصلك تذكير آخر الساعة 10 مساءً.</p>
+        </section>
 
-    <!-- التذكير -->
+    </main>
 
-    <section class="reminder-section">
+    <footer>
+        <p>📖 متابعة حفظ القرآن الكريم</p>
+        <p id="syncState">بياناتك محفوظة على هذا الجهاز</p>
+    </footer>
 
-        <h2>⏰ التذكير اليومي</h2>
-
-        <p>
-            اختر الوقت الذي تريد أن تتذكر فيه الحفظ.
-        </p>
-
-        <div class="reminder-controls">
-
-            <input
-                type="time"
-                id="reminderTime"
-                value="22:00">
-
-            <button id="saveReminderButton">
-                💾 حفظ وقت التذكير
-            </button>
-
-        </div>
-
-        <p id="reminderStatus"></p>
-
-    </section>
-
-</main>
-
-
-<footer>
-
-    <p>📖 متابعة حفظ القرآن الكريم</p>
-
-    <p>
-        بياناتك محفوظة على هذا الجهاز
-    </p>
-
-</footer>
-
-
-<script src="script.js"></script>
-
+    <script src="engine.js"></script>
+    <script src="script.js"></script>
 </body>
-
 </html>
