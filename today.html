@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0f5c3a">
+    <title>مهام اليوم</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="top">
+        <div class="top-row">
+            <a class="back" href="index.html">‹ الرئيسية</a>
+            <button id="themeButton" class="theme-button">🌙 الوضع الليلي</button>
+        </div>
+        <div class="hello">
+            <small>📋 مهام اليوم</small>
+            <h1 id="hTitle">جاري التحميل...</h1>
+            <span class="gold" id="hSub"> </span>
+        </div>
+    </header>
+
+    <main class="wrap" id="app">
+        <div class="box loading">⏳ جاري تحميل مهام اليوم...</div>
+    </main>
+
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+      QT.applyTheme();
+      QT.bindThemeButton("themeButton");
+      var $ = function (id) { return document.getElementById(id); };
+      var esc = QT.esc, app = $("app");
+
+      function head(ic, title, sub) {
+        return '<div class="box-h"><div class="ico">' + ic + '</div><div><h3>' + title + '</h3>' + (sub ? '<small>' + sub + '</small>' : '') + '</div></div>';
+      }
+      function nav(date) {
+        return '<nav class="navbar"><a href="plan.html"><span>📋</span>الخطة</a><a href="index.html"><span>🏠</span>الرئيسية</a><a href="success.html?d=' + date + '"><span>📊</span>التقدم</a></nav>';
+      }
+      function msg(t, s, d) {
+        app.innerHTML = '<div class="box msg"><h2>' + t + '</h2><p class="mu">' + s + '</p><a class="btn" href="plan.html">📋 الخطة</a></div>' + nav(d);
+      }
+
+      function draw() {
+        var st = QT.getState(), date = QT.getParam("d");
+        if (!QT.isYmd(date)) date = QT.todayStr();
+        $("hSub").innerHTML = QT.prettyDate(date);
+        if (!st.start) { $("hTitle").innerHTML = "مهام اليوم"; msg("📅 حدّد تاريخ بداية الخطة أولًا", "افتح الصفحة الرئيسية واختر تاريخ البداية.", date); return; }
+        var M = QT.compute(st, QT.todayStr()), d = M.byDate[date];
+        if (QT.isRest(date)) { $("hTitle").innerHTML = "يوم راحة 🌿"; msg("🌿 يوم راحة", "لا توجد مهام اليوم. تقبّل الله منك.", date); return; }
+        if (date < st.start || !d) { $("hTitle").innerHTML = "مهام اليوم"; msg("لا توجد مهام في هذا التاريخ", "هذا اليوم قبل بداية الخطة أو بعد نهايتها.", date); return; }
+        if (d.isFriday) {
+          $("hTitle").innerHTML = "يوم الجمعة 🕌";
+          app.innerHTML = '<section class="box f">' + head("🕌", "سورة الكهف", "قراءة أو تسميع") +
+            '<div class="item">اقرأ سورة الكهف، وعوّض ما فاتك هذا الأسبوع من أيام أو كنز أو جديد.</div>' +
+            '<a class="send" style="display:block;text-align:center;text-decoration:none" href="report.html?d=' + date + '">🕌 تقرير الجمعة والتعويض</a></section>' + nav(date);
+          return;
+        }
+        $("hTitle").innerHTML = "اليوم " + d.n;
+        var h = '', i, done = (d.status === "done" || d.status === "compensated");
+        h += '<div class="steps"><b>' + (done ? "✅ تم تسجيل تقرير اليوم" : "لم يُسجَّل تقرير اليوم بعد") + '</b></div>';
+        if (d.nw) {
+          var q = d.nw.qi;
+          h += '<section class="box n">' + head("📖", "الجديد", "سورة المائدة · اليوم " + (d.nw.ph === "A" ? "الأول" : "الثاني") + " من الربع") +
+               '<div class="item"><span class="pill g">ربع ' + q.q + '</span><span class="name">من آية ' + d.nw.from + ' إلى آية ' + d.nw.to + '</span> <span class="mu">(' + d.nw.cnt + ' آيات)</span>' +
+               '<br><span class="mu">الربع يبدأ بـ</span> <span class="ph">«' + esc(q.ph) + '»</span></div></section>';
+        }
+        if (d.t) {
+          h += '<section class="box t">' + head("💎", "الكنز", "المطلوب اليوم: " + QT.fmtU(d.t.req) + " ربع");
+          for (i = 0; i < d.t.segs.length; i++) {
+            var sg = d.t.segs[i], inf = sg.info;
+            h += '<div class="item"><span class="pill">ربع ' + sg.u + '</span><span class="name">' + esc(inf.title) + '</span>';
+            if (!sg.whole) h += ' <span class="tag">' + (sg.a === 0 ? "أول " : sg.b === 12 ? "آخر " : "جزء ") + QT.fmtU(sg.b - sg.a) + '</span>';
+            if (inf.sub && inf.sub !== "كاملة") h += '<br><span class="mu">يبدأ بـ</span> <span class="ph">«' + esc(inf.sub) + '»</span>';
+            if (inf.ayat) h += ' <span class="mu">(آيات ' + inf.ayat + ')</span>';
+            if (inf.parts.length > 2) h += '<br><span class="mu">' + esc(inf.parts.map(function (p) { return p[0]; }).join("، ")) + '</span>';
+            h += '</div>';
+          }
+          h += '</section>';
+        }
+        if (d.fx) {
+          h += '<section class="box f">' + head("🔄", "التثبيت", "مراجعة من المائدة");
+          for (i = 0; i < d.fx.qs.length; i++) {
+            var fq = QT.MAIDA[d.fx.qs[i] - 1];
+            h += '<div class="item"><span class="pill g">ربع ' + fq.q + '</span><span class="name">من آية ' + fq.s + ' إلى ' + fq.e + '</span><br><span class="mu">يبدأ بـ</span> <span class="ph">«' + esc(fq.ph) + '»</span></div>';
+          }
+          h += '</section>';
+        }
+        if (!d.nw && !d.t && !d.fx) h += '<section class="box"><div class="item">لا توجد مهام لهذا اليوم.</div></section>';
+        h += '<div class="dock"><a class="send" style="display:block;text-align:center;text-decoration:none" href="report.html?d=' + date + (done ? "&edit=1" : "") + '">' + (done ? "✏️ تعديل تقرير اليوم" : "📝 سجّل تقرير اليوم") + '</a></div>';
+        h += nav(date);
+        app.innerHTML = h;
+      }
+
+      QT.init(function () { draw(); }, 0, function (ok, changed) { if (changed) draw(); });
+    })();
+    </script>
+</body>
+</html>
