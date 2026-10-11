@@ -88,6 +88,7 @@
     }
     var pct = Math.round((M.doneDays / Math.max(1, M.totalDays)) * 100);
     $("dayPercentage").innerHTML = pct + "%";
+    $("ring").style.background = "conic-gradient(#1b8a5a " + pct + "%, #e6f4ec 0)";
     $("progressText").innerHTML = pct + "%";
     $("progressBar").style.width = pct + "%";
     $("progressLabel").innerHTML = M.doneDays + " يوم من " + M.totalDays;
@@ -109,8 +110,31 @@
   };
   $("searchInput").oninput = function () { searchText = this.value.replace(/^\s+|\s+$/g, ""); showSurahs(); };
 
-  QT.init(function (s, fromServer) {
-    $("syncState").innerHTML = fromServer ? "☁️ بياناتك متزامنة على كل أجهزتك" : "بياناتك محفوظة على هذا الجهاز";
+  function showAccount() {
+    var ss = QT.session();
+    if (!ss) return;
+    var ph = ss.phone && ss.phone.indexOf("20") === 0 ? "0" + ss.phone.substring(2) : (ss.phone || "");
+    $("whoBox").innerHTML = "الاسم: <b>" + QT.esc(ss.name) + "</b><br>رقم الهاتف: <b style=\"direction:ltr;unicode-bidi:embed\">" + QT.esc(ph) + "</b>";
+    $("greet").innerHTML = "السلام عليكم يا " + QT.esc(ss.name);
+  }
+
+  /* ---------- أوسمة الإنجاز ---------- */
+  function showBadges() {
+    var list = QT.badges(M), h = "", got = 0;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].got) got++;
+      h += '<div class="badge-item' + (list[i].got ? " got" : "") + '"><span>' + list[i].icon + '</span><b>' + list[i].title + '</b><small>' + list[i].desc + '</small></div>';
+    }
+    $("badgeList").innerHTML = h;
+    $("badgeCount").innerHTML = got + " من " + list.length;
+  }
+
+  QT.init(function () {
+    showAccount();
     render();
-  }, 5000);
+    showBadges();
+  }, 0, function (ok, changed) {
+    $("syncState").innerHTML = ok ? "☁️ بياناتك متزامنة على كل أجهزتك" : "بياناتك محفوظة على هذا الجهاز";
+    if (changed) { showAccount(); render(); showBadges(); }
+  });
 })();

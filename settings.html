@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0f5c3a">
+    <title>الإعدادات</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="top">
+        <div class="top-row">
+            <a class="back" href="index.html">‹ الرئيسية</a>
+            <button id="themeButton" class="theme-button">🌙 الوضع الليلي</button>
+        </div>
+        <div class="hello">
+            <small>⚙️ الإعدادات</small>
+            <h1 id="hName">حسابي</h1>
+            <span class="gold" id="hPhone"> </span>
+        </div>
+    </header>
+
+    <main class="wrap" id="app">
+
+        <section class="box">
+            <div class="box-h"><div class="ico">👤</div><div><h3>الاسم</h3></div></div>
+            <input class="input" id="sName" type="text">
+            <button type="button" class="btn small" id="saveName" style="margin-top:10px">💾 حفظ الاسم</button>
+        </section>
+
+        <section class="box">
+            <div class="box-h"><div class="ico">📱</div><div><h3>رقم الهاتف</h3><small>تصلك عليه الرسائل (لازم يكون عليه واتساب)</small></div></div>
+            <input class="input" id="sPhone" type="tel" inputmode="numeric" maxlength="14" placeholder="اكتب رقم هاتفك" style="direction:ltr;text-align:right">
+            <label class="lbl" for="sPhonePw">كلمة السر الحالية <small>(مطلوبة لتغيير الرقم)</small></label>
+            <div class="pwwrap"><input class="input" id="sPhonePw" type="password" placeholder="كلمة السر الحالية"><button type="button">👁</button></div>
+            <button type="button" class="btn small" id="savePhone" style="margin-top:10px">💾 تغيير الرقم</button>
+        </section>
+
+        <section class="box">
+            <div class="box-h"><div class="ico">👪</div><div><h3>رقم ولي الأمر</h3><small>اختياري — يصله ملخص ما أنجزته كل يوم ليتابع معك</small></div></div>
+            <input class="input" id="sGuardian" type="tel" inputmode="numeric" maxlength="14" placeholder="اتركه فارغًا لإيقاف الإرسال" style="direction:ltr;text-align:right">
+            <button type="button" class="btn small" id="saveGuardian" style="margin-top:10px">💾 حفظ رقم ولي الأمر</button>
+        </section>
+
+        <section class="box">
+            <div class="box-h"><div class="ico">⏰</div><div><h3>مواعيد التذكير</h3><small>أول موعد إجباري وأضف ما تشاء — يتوقف التذكير لو سجّلت تقريرك</small></div></div>
+            <div id="sRem"></div>
+            <button type="button" class="btn small" id="saveRem" style="margin-top:10px">💾 حفظ المواعيد</button>
+        </section>
+
+        <section class="box">
+            <div class="box-h"><div class="ico">🗓️</div><div><h3>أيام الراحة</h3><small>اضغط اليوم الذي لا تحفظ فيه</small></div></div>
+            <div class="daychips" id="restChips"></div>
+            <button type="button" class="btn small" id="saveRest" style="margin-top:10px">💾 حفظ أيام الراحة</button>
+        </section>
+
+        <section class="box">
+            <div class="box-h"><div class="ico">🔐</div><div><h3>كلمة السر</h3></div></div>
+            <label class="lbl" for="oldPw">كلمة السر القديمة</label>
+            <div class="pwwrap"><input class="input" id="oldPw" type="password" placeholder="كلمة السر القديمة"><button type="button">👁</button></div>
+            <label class="lbl" for="newPw">كلمة السر الجديدة</label>
+            <div class="pwwrap"><input class="input" id="newPw" type="password" placeholder="4 أرقام أو أكثر"><button type="button">👁</button></div>
+            <button type="button" class="btn small" id="savePw" style="margin-top:10px">💾 تغيير كلمة السر</button>
+            <button type="button" class="linkbtn" id="forgotOld">نسيت كلمة السر القديمة؟</button>
+            <div class="reset" id="resetBox" style="display:none">
+                <div class="muted">سنرسل رمزًا من 6 أرقام على واتساب على رقمك المسجّل للتأكد أنه حسابك.</div>
+                <button type="button" class="btn small" id="sendCode" style="margin-top:8px">📲 إرسال الرمز</button>
+                <div id="codePart" style="display:none">
+                    <label class="lbl" for="rCode">الرمز الذي وصلك</label>
+                    <input class="input" id="rCode" type="tel" inputmode="numeric" maxlength="6" placeholder="6 أرقام" style="direction:ltr;text-align:center;letter-spacing:4px">
+                    <label class="lbl" for="rNew">كلمة السر الجديدة</label>
+                    <div class="pwwrap"><input class="input" id="rNew" type="password" placeholder="كلمة السر الجديدة"><button type="button">👁</button></div>
+                    <button type="button" class="btn small" id="confirmCode" style="margin-top:10px">✅ تأكيد</button>
+                </div>
+                <div id="resetMsg"></div>
+            </div>
+        </section>
+
+        <section class="box">
+            <div class="box-h"><div class="ico">📖</div><div><h3>التعليمات</h3></div></div>
+            <a class="btn" href="onboarding.html" style="display:block;text-align:center">شاهد التعليمات من جديد</a>
+            <button type="button" class="btn red" id="logoutBtn" style="width:100%;margin-top:12px;padding:13px">🚪 تسجيل الخروج</button>
+        </section>
+    </main>
+
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+      QT.applyTheme();
+      QT.bindThemeButton("themeButton");
+      QT.bindEyes();
+      var $ = function (id) { return document.getElementById(id); };
+      var PHONE_ERR = "رقم الهاتف لازم يكون 11 رقمًا ويبدأ بـ 010 أو 011 أو 012 أو 015.";
+      var DAYS = [[6, "السبت"], [0, "الأحد"], [1, "الاثنين"], [2, "الثلاثاء"], [3, "الأربعاء"], [4, "الخميس"]], restSel = {}, rem = null;
+
+      function local(p) { return p && p.indexOf("20") === 0 ? "0" + p.substring(2) : (p || ""); }
+      function fill() {
+        var ss = QT.session(); if (!ss) return;
+        $("hName").innerHTML = QT.esc(ss.name); $("hPhone").innerHTML = local(ss.phone);
+        $("sName").value = ss.name; $("sPhone").value = local(ss.phone); $("sGuardian").value = local(ss.guardian);
+        restSel = {}; var cur = QT.rest(), i; for (i = 0; i < cur.length; i++) restSel[cur[i]] = 1;
+        drawDays();
+        rem = QT.mountReminders($("sRem"), ss.reminders && ss.reminders.length ? ss.reminders : ["18:00"]);
+      }
+      function drawDays() {
+        var h = "";
+        for (var i = 0; i < DAYS.length; i++) h += '<button type="button" class="daychip' + (restSel[DAYS[i][0]] ? " off" : "") + '" data-d="' + DAYS[i][0] + '">' + DAYS[i][1] + '<small>' + (restSel[DAYS[i][0]] ? "راحة" : "حفظ") + '</small></button>';
+        h += '<div class="daychip fri">الجمعة<small>سورة الكهف + تعويض النواقص (يوم أو كنز أو جديد)</small></div>';
+        $("restChips").innerHTML = h;
+      }
+      $("restChips").onclick = function (ev) {
+        ev = ev || window.event; var t = ev.target || ev.srcElement;
+        while (t && t !== this && !(t.getAttribute && t.getAttribute("data-d"))) t = t.parentNode;
+        if (!t || t === this) return;
+        var n = Number(t.getAttribute("data-d")); if (restSel[n]) delete restSel[n]; else restSel[n] = 1; drawDays();
+      };
+
+      function save(payload, okMsg, after) {
+        QT.updateProfile(payload, function (ok, res) {
+          if (ok) { QT.toast(okMsg, "ok2"); fill(); if (after) after(); } else QT.toast(String(res), "err2");
+        });
+      }
+      $("saveName").onclick = function () {
+        var n = $("sName").value.replace(/^\s+|\s+$/g, ""); if (n.length < 2) { QT.toast("اكتب اسمك", "err2"); return; }
+        save({ name: n }, "تم حفظ الاسم ✅");
+      };
+      $("savePhone").onclick = function () {
+        var p = $("sPhone").value; if (!QT.normPhone(p)) { QT.toast(PHONE_ERR, "err2"); return; }
+        if (QT.normPhone(p) === QT.session().phone) { QT.toast("هذا هو رقمك الحالي", "err2"); return; }
+        if (!$("sPhonePw").value) { QT.toast("اكتب كلمة السر الحالية لتغيير الرقم", "err2"); return; }
+        save({ phone: p, password: $("sPhonePw").value }, "تم تغيير الرقم ✅ (ستصلك الرسائل عليه الآن)", function () { $("sPhonePw").value = ""; });
+      };
+      $("saveGuardian").onclick = function () {
+        var g = $("sGuardian").value.replace(/\s/g, "");
+        if (g && !QT.normPhone(g)) { QT.toast("رقم ولي الأمر: " + PHONE_ERR, "err2"); return; }
+        save({ guardian: g }, g ? "تم حفظ رقم ولي الأمر ✅" : "تم إيقاف الإرسال لولي الأمر");
+      };
+      $("saveRem").onclick = function () {
+        var t = rem.get(), i;
+        for (i = 0; i < t.length; i++) if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t[i] || "")) { QT.toast("تأكد أن كل المواعيد مكتملة", "err2"); return; }
+        save({ reminders: t }, "تم حفظ المواعيد ✅");
+      };
+      $("saveRest").onclick = function () {
+        var a = [], k; for (k in restSel) if (restSel.hasOwnProperty(k)) a.push(Number(k));
+        if (a.length > 5) { QT.toast("اترك يومًا واحدًا على الأقل للحفظ", "err2"); return; }
+        if (!window.confirm("تغيير أيام الراحة يعيد توزيع أيام الخطة القادمة. متأكد؟")) return;
+        save({ rest: a }, "تم حفظ أيام الراحة ✅");
+      };
+      $("savePw").onclick = function () {
+        if (!$("oldPw").value) { QT.toast("اكتب كلمة السر القديمة", "err2"); return; }
+        if ($("newPw").value.length < 4) { QT.toast("كلمة السر الجديدة لا تقل عن 4", "err2"); return; }
+        save({ oldPin: $("oldPw").value, newPin: $("newPw").value }, "تم تغيير كلمة السر ✅", function () { $("oldPw").value = ""; $("newPw").value = ""; });
+      };
+
+      /* نسيت القديمة: رمز على واتساب ثم كلمة سر جديدة */
+      $("forgotOld").onclick = function () { $("resetBox").style.display = $("resetBox").style.display === "none" ? "block" : "none"; };
+      function msg(t, bad) { $("resetMsg").innerHTML = t ? '<div class="' + (bad ? "err" : "ok-msg") + '">' + QT.esc(t) + '</div>' : ""; }
+      $("sendCode").onclick = function () {
+        msg("⏳ جاري الإرسال...", false);
+        QT.resetRequest(local(QT.session().phone), function (ok, m) { msg(m, !ok); if (ok) $("codePart").style.display = "block"; });
+      };
+      $("confirmCode").onclick = function () {
+        var code = $("rCode").value, pin = $("rNew").value;
+        if (code.length < 6) { msg("اكتب الرمز المكوّن من 6 أرقام.", true); return; }
+        if (pin.length < 4) { msg("كلمة السر الجديدة لا تقل عن 4 أرقام أو حروف.", true); return; }
+        QT.resetConfirm(local(QT.session().phone), code, pin, function (ok, m) {
+          if (ok) { QT.toast("تم تغيير كلمة السر. سجّل الدخول من جديد.", "ok2"); setTimeout(function () { QT.logout(); }, 1200); }
+          else msg(m, true);
+        });
+      };
+      $("logoutBtn").onclick = function () { if (window.confirm("تسجيل الخروج من هذا الجهاز؟ بياناتك محفوظة ويمكنك الدخول لاحقًا.")) QT.logout(); };
+
+      QT.init(function () { fill(); }, 0, function (ok, changed) { if (changed) fill(); });
+    })();
+    </script>
+</body>
+</html>

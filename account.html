@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0f5c3a">
+    <title>حسابي — خطة متابعة القرآن الكريم</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="top">
+        <div class="top-row">
+            <span class="back">📖 حفظ القرآن</span>
+            <button id="themeButton" class="theme-button">🌙 الوضع الليلي</button>
+        </div>
+        <div class="hello">
+            <small>السلام عليكم ورحمة الله</small>
+            <h1>خطة متابعة القرآن الكريم</h1>
+            <span class="gold">للصف الثالث الإعدادي</span>
+        </div>
+    </header>
+
+    <main class="wrap">
+        <div class="tabs">
+            <button type="button" class="tab on" id="tabReg">إنشاء حساب</button>
+            <button type="button" class="tab" id="tabLogin">تسجيل الدخول</button>
+        </div>
+
+        <section class="box" id="regBox">
+            <div class="box-h"><div class="ico">👤</div><div><h3>إنشاء حساب جديد</h3><small>لكل مشترك خطته وتقاريره الخاصة</small></div></div>
+
+            <label class="lbl" for="rName">الاسم</label>
+            <input class="input" id="rName" type="text" autocomplete="name" placeholder="اكتب اسمك">
+
+            <label class="lbl" for="rPhone">رقم هاتفك <small>(لازم يكون عليه واتساب — يصلك عليه التذكير والتقرير)</small></label>
+            <input class="input" id="rPhone" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="اكتب رقم هاتفك (11 رقمًا)" style="direction:ltr;text-align:right">
+
+            <label class="lbl" for="rPin">كلمة السر <small>(4 أرقام أو أكثر — تحتاجها لو دخلت من جهاز آخر)</small></label>
+            <div class="pwwrap"><input class="input" id="rPin" type="password" autocomplete="new-password" placeholder="اكتب كلمة السر"><button type="button" aria-label="إظهار كلمة السر">👁</button></div>
+
+            <label class="lbl" for="rGuardian">رقم ولي الأمر <small>(اختياري — يصله ملخص ما أنجزته كل يوم ليتابع معك)</small></label>
+            <input class="input" id="rGuardian" type="tel" inputmode="numeric" maxlength="14" placeholder="اتركه فارغًا لو لا تريد" style="direction:ltr;text-align:right">
+
+            <label class="lbl">الأيام التي لا تفرغ فيها للحفظ <small>(اضغط اليوم ليصبح راحة بدون مهام — اتركها كما هي لو تفرغ كل الأيام)</small></label>
+            <div class="daychips" id="dayChips"></div>
+
+            <label class="lbl">متى يصلك تذكير التقرير؟ <small>(أول موعد إجباري، وأضف ما تشاء — يتوقف التذكير لو سجّلت تقريرك)</small></label>
+            <div id="remBox"></div>
+
+            <label class="consent"><input type="checkbox" id="rConsent"><span>أوافق على استلام تذكيرات وتقارير الحفظ على واتساب (وموافقة ولي الأمر على ذلك إن أُضيف رقمه).</span></label>
+            <div id="closedMsg"></div>
+            <div id="regErr"></div>
+            <button type="button" class="send" id="regBtn" style="margin-top:12px;font-size:17px;padding:14px">✅ إنشاء الحساب والبدء</button>
+        </section>
+
+        <section class="box" id="loginBox" style="display:none">
+            <div class="box-h"><div class="ico">🔑</div><div><h3>تسجيل الدخول</h3><small>لو عندك حساب بالفعل</small></div></div>
+            <label class="lbl" for="lPhone">رقم هاتفك</label>
+            <input class="input" id="lPhone" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="اكتب رقم هاتفك" style="direction:ltr;text-align:right">
+            <label class="lbl" for="lPin">كلمة السر</label>
+            <div class="pwwrap"><input class="input" id="lPin" type="password" autocomplete="current-password" placeholder="اكتب كلمة السر"><button type="button" aria-label="إظهار كلمة السر">👁</button></div>
+            <div id="loginErr"></div>
+            <button type="button" class="send" id="loginBtn" style="margin-top:12px;font-size:17px;padding:14px">🔓 دخول</button>
+            <button type="button" class="linkbtn" id="forgotBtn">نسيت كلمة السر؟</button>
+            <div class="reset" id="resetBox" style="display:none">
+                <div class="muted">سيصلك رمز من 6 أرقام على واتساب على رقمك المسجّل.</div>
+                <button type="button" class="btn small" id="sendCode" style="margin-top:8px">📲 إرسال الرمز</button>
+                <div id="codePart" style="display:none">
+                    <label class="lbl" for="rCode">الرمز الذي وصلك</label>
+                    <input class="input" id="rCode" type="tel" inputmode="numeric" maxlength="6" placeholder="6 أرقام" style="direction:ltr;text-align:center;letter-spacing:4px">
+                    <label class="lbl" for="rNew">كلمة السر الجديدة</label>
+                    <div class="pwwrap"><input class="input" id="rNew" type="password" placeholder="كلمة السر الجديدة"><button type="button" aria-label="إظهار كلمة السر">👁</button></div>
+                    <button type="button" class="btn small" id="confirmCode" style="margin-top:10px">✅ تغيير كلمة السر</button>
+                </div>
+                <div id="resetMsg"></div>
+            </div>
+        </section>
+
+        <p class="hint" style="text-align:center">بياناتك وتقاريرك لا يراها أي مشترك آخر.</p>
+    </main>
+
+    <script src="engine.js"></script>
+    <script>
+    (function () {
+      QT.applyTheme();
+      QT.bindThemeButton("themeButton");
+      QT.bindEyes();
+      var $ = function (id) { return document.getElementById(id); };
+
+      function nextUrl() {
+        var n = QT.getParam("next");
+        return /^[A-Za-z]+\.html(\?.*)?$/.test(n) && n.indexOf("account.html") < 0 ? n : "index.html";
+      }
+      if (QT.session()) { window.location.replace(nextUrl()); return; }
+
+      function show(which) {
+        $("regBox").style.display = which === "reg" ? "block" : "none";
+        $("loginBox").style.display = which === "login" ? "block" : "none";
+        $("tabReg").className = "tab" + (which === "reg" ? " on" : "");
+        $("tabLogin").className = "tab" + (which === "login" ? " on" : "");
+      }
+      $("tabReg").onclick = function () { show("reg"); };
+      $("tabLogin").onclick = function () { show("login"); };
+
+      /* أيام الراحة */
+      var DAYS = [[6, "السبت"], [0, "الأحد"], [1, "الاثنين"], [2, "الثلاثاء"], [3, "الأربعاء"], [4, "الخميس"]], restSel = {};
+      function drawDays() {
+        var h = "";
+        for (var i = 0; i < DAYS.length; i++) h += '<button type="button" class="daychip' + (restSel[DAYS[i][0]] ? " off" : "") + '" data-d="' + DAYS[i][0] + '">' + DAYS[i][1] + '<small>' + (restSel[DAYS[i][0]] ? "راحة" : "حفظ") + '</small></button>';
+        h += '<div class="daychip fri">الجمعة<small>سورة الكهف + تعويض النواقص (يوم أو كنز أو جديد)</small></div>';
+        $("dayChips").innerHTML = h;
+      }
+      $("dayChips").onclick = function (ev) {
+        ev = ev || window.event; var t = ev.target || ev.srcElement;
+        while (t && t !== this && !(t.getAttribute && t.getAttribute("data-d"))) t = t.parentNode;
+        if (!t || t === this) return;
+        var n = Number(t.getAttribute("data-d"));
+        if (restSel[n]) delete restSel[n]; else restSel[n] = 1;
+        drawDays();
+      };
+      drawDays();
+
+      /* مواعيد التذكير */
+      var rem = QT.mountReminders($("remBox"), ["18:00"]);
+
+      /* حد التسجيل (رقم Meta التجريبي يقبل 5 أرقام فقط) */
+      var closed = false;
+      QT.status(function (ok, d) {
+        if (ok && d && d.open === false) {
+          closed = true;
+          $("closedMsg").innerHTML = '<div class="err"><b>للأسف تم انتهاء التسجيل.</b><br>اكتمل العدد المسموح به حاليًا. للاستفسار تواصل مع الدعم: <a href="https://wa.me/201095374757" style="direction:ltr;unicode-bidi:embed;font-weight:700">01095374757</a></div>';
+          $("regBtn").className = "send off";
+        }
+      });
+
+      function showErr(id, msg) { $(id).innerHTML = msg ? '<div class="err">' + QT.esc(msg) + '</div>' : ""; }
+      var busy = false;
+      function lock(btn, on, label) { busy = on; btn.className = "send" + (on ? " off" : ""); btn.innerHTML = on ? "⏳ جاري الاتصال..." : label; }
+      var PHONE_ERR = "رقم الهاتف لازم يكون 11 رقمًا ويبدأ بـ 010 أو 011 أو 012 أو 015.";
+
+      $("regBtn").onclick = function () {
+        if (busy) return;
+        if (closed) { showErr("regErr", "للأسف تم انتهاء التسجيل. تواصل مع الدعم: 01095374757"); return; }
+        var name = $("rName").value.replace(/^\s+|\s+$/g, ""), phone = $("rPhone").value, pin = $("rPin").value, g = $("rGuardian").value.replace(/\s/g, "");
+        if (name.length < 2) { showErr("regErr", "اكتب اسمك."); return; }
+        if (!phone.replace(/\s/g, "")) { showErr("regErr", "اكتب رقم هاتفك في الخانة."); return; }
+        if (!QT.normPhone(phone)) { showErr("regErr", PHONE_ERR); return; }
+        if (pin.length < 4) { showErr("regErr", "كلمة السر لا تقل عن 4 أرقام أو حروف."); return; }
+        if (g && !QT.normPhone(g)) { showErr("regErr", "رقم ولي الأمر: " + PHONE_ERR); return; }
+        if (g && QT.normPhone(g) === QT.normPhone(phone)) { showErr("regErr", "رقم ولي الأمر لازم يكون مختلفًا عن رقمك."); return; }
+        var times = rem.get(), k;
+        for (k = 0; k < times.length; k++) if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(times[k] || "")) { showErr("regErr", "اختر موعد التذكير الأول (إجباري) وتأكد أن كل المواعيد مكتملة."); return; }
+        if (!$("rConsent").checked) { showErr("regErr", "لازم توافق على استلام الرسائل على واتساب."); return; }
+        var restArr = [];
+        for (k in restSel) if (restSel.hasOwnProperty(k)) restArr.push(Number(k));
+        if (restArr.length > 5) { showErr("regErr", "اترك يومًا واحدًا على الأقل للحفظ."); return; }
+        showErr("regErr", ""); lock($("regBtn"), true);
+        QT.register({ name: name, phone: phone, pin: pin, guardian: g, rest: restArr, reminders: times, consent: true }, function (ok, data) {
+          if (ok) { window.location.replace("onboarding.html"); return; }
+          lock($("regBtn"), false, "✅ إنشاء الحساب والبدء"); showErr("regErr", data && data.error || "حدث خطأ.");
+        });
+      };
+      $("loginBtn").onclick = function () {
+        if (busy) return;
+        var phone = $("lPhone").value, pin = $("lPin").value;
+        if (!QT.normPhone(phone)) { showErr("loginErr", PHONE_ERR); return; }
+        if (!pin) { showErr("loginErr", "اكتب كلمة السر."); return; }
+        showErr("loginErr", ""); lock($("loginBtn"), true);
+        QT.login({ phone: phone, pin: pin }, function (ok, data) {
+          if (ok) { window.location.replace(nextUrl()); return; }
+          lock($("loginBtn"), false, "🔓 دخول"); showErr("loginErr", data && data.error || "حدث خطأ.");
+        });
+      };
+
+      /* نسيت كلمة السر */
+      $("forgotBtn").onclick = function () { $("resetBox").style.display = $("resetBox").style.display === "none" ? "block" : "none"; };
+      function msg(t, bad) { $("resetMsg").innerHTML = t ? '<div class="' + (bad ? "err" : "ok-msg") + '">' + QT.esc(t) + '</div>' : ""; }
+      $("sendCode").onclick = function () {
+        var phone = $("lPhone").value;
+        if (!QT.normPhone(phone)) { msg("اكتب رقم هاتفك أعلاه أولًا (11 رقمًا).", true); return; }
+        msg("⏳ جاري الإرسال...", false);
+        QT.resetRequest(phone, function (ok, m) {
+          msg(m, !ok);
+          if (ok) $("codePart").style.display = "block";
+        });
+      };
+      $("confirmCode").onclick = function () {
+        var code = $("rCode").value, pin = $("rNew").value;
+        if (code.length < 6) { msg("اكتب الرمز المكوّن من 6 أرقام.", true); return; }
+        if (pin.length < 4) { msg("كلمة السر الجديدة لا تقل عن 4 أرقام أو حروف.", true); return; }
+        QT.resetConfirm($("lPhone").value, code, pin, function (ok, m) {
+          msg(m, !ok);
+          if (ok) { $("lPin").value = pin; $("codePart").style.display = "none"; }
+        });
+      };
+    })();
+    </script>
+</body>
+</html>

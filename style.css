@@ -195,3 +195,52 @@ body.dark .formbar { color: #e8d9a6; border-color: #5d4e1c; }
 .sheet-x { background: rgba(255,255,255,.2); color: #fff; width: 38px; height: 38px; border-radius: 50%; font-size: 18px; }
 .sheet .steps { margin-top: 0; }
 @media (min-width: 640px) { .sheet-in { max-width: 600px; margin: 0 auto; } }
+
+/* ---------- صفحة الحساب ---------- */
+.lbl { display: block; font-weight: 700; margin: 13px 0 6px; font-size: 14px; color: var(--g1); }
+.lbl small { color: var(--mut); font-weight: 400; }
+.consent { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0 4px; font-size: 13.5px; line-height: 1.8; color: var(--mut); }
+.consent input { width: 20px; height: 20px; margin-top: 4px; flex-shrink: 0; accent-color: var(--g2); }
+.who { background: var(--g3); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; line-height: 1.9; }
+.who b { color: var(--g1); }
+body.dark .lbl, body.dark .who b { color: #bfe9cf; }
+
+/* ---------- حلقة التقدم / الأوسمة / أيام الراحة / الدعم / الحركة ---------- */
+.ringbox { text-align: center; min-width: 92px; }
+.ring { width: 86px; height: 86px; border-radius: 50%; background: #e6f4ec; display: flex; align-items: center; justify-content: center; margin: 0 auto 4px; }
+.ring-in { width: 66px; height: 66px; border-radius: 50%; background: var(--card); display: flex; align-items: center; justify-content: center; }
+.ring-in strong { color: var(--g1); font-size: 18px; }
+.badge-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 10px; }
+.badge-item { text-align: center; padding: 10px 4px; border-radius: 16px; background: var(--soft); border: 1px dashed var(--line); filter: grayscale(1); opacity: .5; }
+.badge-item.got { filter: none; opacity: 1; background: linear-gradient(145deg, #fffbef, #f0faf4); border: 1px solid #ecd9a4; box-shadow: 0 3px 8px rgba(167,122,20,.15); }
+.badge-item span { display: block; font-size: 26px; }
+.badge-item b { display: block; font-size: 13px; color: var(--g1); margin-top: 2px; }
+.badge-item small { display: block; font-size: 11px; color: var(--mut); line-height: 1.5; }
+.daychips { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.daychip { padding: 10px 4px; border-radius: 14px; text-align: center; font-size: 14.5px; font-weight: 700; background: #f1faf5; color: var(--g1); border: 2px solid #bfe3cf; line-height: 1.4; }
+.daychip small { display: block; font-size: 11.5px; font-weight: 600; opacity: .85; }
+.daychip.off { background: #fff6ec; color: #a8590b; border-color: #f3cfa6; }
+.daychip.fri { grid-column: 1 / -1; background: var(--gold2); color: #7a5a0b; border-color: #ecd9a4; cursor: not-allowed; }
+.daychip.fri:before { content: "🔒 "; }
+body.dark .daychip { background: #17291f; border-color: #2c5a41; color: #bfe9cf; }
+body.dark .daychip.off { background: #2c2015; border-color: #66431c; color: #f0c698; }
+body.dark .daychip.fri { background: #2e2915; border-color: #5d4e1c; color: #e8d9a6; }
+body.dark .badge-item.got { background: linear-gradient(145deg, #2a2512, #1c2b21); border-color: #5d4e1c; }
+body.dark .ring-in { background: #1c2420; }
+body.dark .ring-in strong, body.dark .badge-item b { color: #bfe9cf; }
+.support { text-align: center; color: var(--mut); font-size: 13.5px; padding: 6px 12px 22px; }
+.support a { color: var(--g2); }
+.wrap > * { animation: rise .35s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---------- المنبهات / كلمة السر / الاسم المنسوخ ---------- */
+.remrow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.remrow .input { flex: 1; direction: ltr; text-align: center; font-size: 18px; font-weight: 700; }
+.pwwrap { position: relative; }
+.pwwrap .input { padding-left: 52px; }
+.pwwrap button { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); background: transparent; font-size: 20px; padding: 6px 8px; }
+.namebox { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #f0faf4; border: 2px dashed var(--g2); border-radius: 16px; padding: 12px 14px; margin: 10px 0; }
+.namebox b { font-size: 18px; color: var(--g1); }
+body.dark .namebox { background: #17291f; } body.dark .namebox b { color: #bfe9cf; }
+.reset { background: var(--soft); border: 1px solid var(--line); border-radius: 16px; padding: 12px; margin-top: 12px; }
+.linkbtn { background: transparent; color: var(--g2); font-weight: 700; font-size: 14px; padding: 8px 0; text-decoration: underline; }

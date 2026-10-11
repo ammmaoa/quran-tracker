@@ -11,7 +11,12 @@ var QT_CONFIG = {
   // رابط Google Apps Script (الذي نشرته). لو غيّرته ضعه هنا.
   SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyladtIbtLJUU9M-f25RuOaW9dVaTs2FXQj2D1LnhNYXvkKaOWEpHbaxRQ7rVcf6foCPg/exec",
   // عدد أرباع التثبيت في اليوم (ربعان).
-  FIX_PER_DAY: 2
+  FIX_PER_DAY: 2,
+  // رقم الدعم (يظهر أسفل كل صفحة)
+  SUPPORT_PHONE: "201095374757",
+  // الرقم الذي ترسل منه الرسائل (رقم واتساب Meta). اكتبه بصيغة دولية بدون +؛ يظهر في شاشة الترحيب ليحفظه المشترك.
+  SENDER_PHONE: "",
+  SENDER_NAME: "خطة القرآن 📖"
 };
 
 var QT = (function () {
@@ -234,7 +239,13 @@ var SLOTS=[
     }
   })();
 
-  var REST = { 0: 1, 3: 1 };      // الأحد والأربعاء: راحة بلا أي مهام
+  var REST = { 0: 1, 3: 1 };      // أيام الراحة (0=الأحد ... 6=السبت)؛ يحددها كل مشترك عند التسجيل، والافتراضي الأحد والأربعاء
+  function setRest(arr) {
+    REST = {};
+    if (!arr || arr.length === undefined) arr = [0, 3];
+    for (var i = 0; i < arr.length; i++) { var n = Number(arr[i]); if (n >= 0 && n <= 6 && n !== 5) REST[n] = 1; }
+  }
+  function getRestArr() { var o = []; for (var k in REST) if (REST.hasOwnProperty(k)) o.push(Number(k)); o.sort(function (a, b) { return a - b; }); return o; }
   function isRest(s) { return !!REST[parseYmd(s).getDay()]; }
 
   var DAYNAMES = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
@@ -397,13 +408,25 @@ var SLOTS=[
        kahf:    { "YYYY-MM-DD": { ok:true/false, at } }
      }
      ------------------------------------------------------------------- */
-  var LS_KEY = "qt_state_v2";
+  var SESS_KEY = "qt_session_v1";
+  function getSession() {
+    try {
+      var x = JSON.parse(window.localStorage.getItem(SESS_KEY) || "null");
+      if (x && x.uid && x.token) return x;
+    } catch (e) {}
+    return null;
+  }
+  function setSession(x) {
+    try { if (x) window.localStorage.setItem(SESS_KEY, JSON.stringify(x)); else window.localStorage.removeItem(SESS_KEY); } catch (e) {}
+  }
+  function lsKey() { var x = getSession(); return "qt_state_v2_" + (x ? x.uid : "anon"); }
+  function dirtyKey() { var x = getSession(); return "qt_dirty_" + (x ? x.uid : "anon"); }
   var state = null;
 
   function emptyState() { return { v: 2, start: "", settingsAt: 0, reports: {}, comps: [], kahf: {} }; }
   function loadLocal() {
     try {
-      var raw = window.localStorage.getItem(LS_KEY);
+      var raw = window.localStorage.getItem(lsKey());
       if (raw) {
         var s = JSON.parse(raw);
         if (s && typeof s === "object") {
@@ -416,10 +439,10 @@ var SLOTS=[
     return emptyState();
   }
   function saveLocal() {
-    try { window.localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+    try { window.localStorage.setItem(lsKey(), JSON.stringify(state)); } catch (e) {}
   }
-  function setDirty(v) { try { window.localStorage.setItem("qt_dirty", v ? "1" : "0"); } catch (e) {} }
-  function isDirty() { try { return window.localStorage.getItem("qt_dirty") === "1"; } catch (e) { return false; } }
+  function setDirty(v) { try { window.localStorage.setItem(dirtyKey(), v ? "1" : "0"); } catch (e) {} }
+  function isDirty() { try { return window.localStorage.getItem(dirtyKey()) === "1"; } catch (e) { return false; } }
 
   function merge(a, b) {            // دمج حالتين: الأحدث يفوز لكل عنصر
     var out = emptyState(), k;
@@ -466,45 +489,171 @@ var SLOTS=[
   }
   function hasServer() { return QT_CONFIG.SCRIPT_URL && QT_CONFIG.SCRIPT_URL.indexOf("script.google.com") > -1; }
 
+  function goAccount() {
+    var here = String(window.location.pathname || "").split("/").pop() + String(window.location.search || "");
+    var next = /^[A-Za-z]+\.html(\?.*)?$/.test(here) && here.indexOf("account.html") < 0 ? "?next=" + encodeURIComponent(here) : "";
+    window.location.replace("account.html" + next);
+  }
+  function authFail() { setSession(null); goAccount(); }
+
   function pull(cb) {
-    if (!hasServer()) { if (cb) cb(false, false); return; }
-    http("GET", QT_CONFIG.SCRIPT_URL + "?action=state&t=" + new Date().getTime(), null, function (ok, data) {
+    var ss = getSession();
+    if (!hasServer() || !ss) { if (cb) cb(false, false); return; }
+    http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify({ action: "get", uid: ss.uid, token: ss.token }), function (ok, data) {
+      if (ok && data && data.ok === false && data.error === "auth") { authFail(); return; }
       if (!ok || !data || !data.state) { if (cb) cb(false, false); return; }
+      var restChanged = false;
+      if (data.profile) {
+        var oldRest = JSON.stringify(ss.rest || [0, 3]);
+        ss.name = data.profile.name; ss.phone = data.profile.phone; ss.guardian = data.profile.guardian; ss.rest = data.profile.rest || [0, 3]; ss.reminders = data.profile.reminders || ["18:00", "22:00"];
+        setSession(ss); setRest(ss.rest);
+        restChanged = oldRest !== JSON.stringify(ss.rest);
+      }
       var remote = data.state;
       remote.reports = remote.reports || {}; remote.comps = remote.comps || []; remote.kahf = remote.kahf || {};
       var merged = merge(state, remote);
-      var changed = !sameState(merged, state);
+      var changed = restChanged || !sameState(merged, state);
       state = merged;
       saveLocal();
       var needPush = !sameState(merged, remote);
       if (needPush) setDirty(true);
       if (cb) cb(true, changed);
-    }, 9000);
+    }, 12000);
   }
   function push(extra, cb) {
-    if (!hasServer()) { if (cb) cb(false, null); return; }
-    var payload = { action: "save", state: state };
+    var ss = getSession();
+    if (!hasServer() || !ss) { if (cb) cb(false, null); return; }
+    var payload = { action: "save", uid: ss.uid, token: ss.token, state: state };
     if (extra) for (var k in extra) if (extra.hasOwnProperty(k)) payload[k] = extra[k];
     http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify(payload), function (ok, data) {
+      if (ok && data && data.ok === false && data.error === "auth") { authFail(); return; }
       if (ok && data && data.ok !== false) setDirty(false);
       if (cb) cb(ok, data);
     }, 15000);
   }
-  // يحمّل الحالة: يعرض المحلي فورًا ثم يحدّث من الخادم (مرة واحدة)
-  function init(cb, waitMs) {
+  // يعرض الصفحة فورًا من بيانات الجهاز، ثم يحدّث من الخادم في الخلفية.
+  // cb: عند الجاهزية (فورًا) ، onSync(ok, changed): بعد المزامنة مع الخادم. بدون حساب يحوّل لصفحة الحساب.
+  function init(cb, waitMs, onSync) {
+    var ss = getSession();
+    if (!ss) { goAccount(); return; }
+    setRest(ss.rest);
     state = loadLocal();
-    var called = false;
-    function once(fromServer) { if (called) return; called = true; if (cb) cb(state, fromServer); }
-    if (!hasServer()) { once(false); return; }
-    var timer = setTimeout(function () { once(false); }, waitMs || 5000);
-    pull(function (ok) {
-      clearTimeout(timer);
-      if (isDirty()) push(null, null);
-      once(ok);
+    if (cb) cb(state, false);
+    if (!hasServer()) { if (onSync) onSync(false, false); return; }
+    pull(function (ok, changed) {
+      flushPending();
+      if (onSync) onSync(ok, changed);
     });
   }
+  /* ---------- الحسابات ---------- */
+  // رقم موبايل مصري: 11 رقمًا يبدأ بـ 010 أو 011 أو 012 أو 015 (يعود بصيغة 201xxxxxxxxx أو "" لو غير صحيح)
+  function normPhone(p) {
+    var d = normDigits(p || "").replace(/\D/g, "");
+    if (d.indexOf("0020") === 0) d = d.substring(2);
+    if (d.length === 12 && d.indexOf("20") === 0) d = "0" + d.substring(2);
+    if (!/^01[0125]\d{8}$/.test(d)) return "";
+    return "2" + d;
+  }
+  function authCall(payload, cb) {
+    if (!hasServer()) { cb(false, { error: "رابط الخادم غير مضبوط." }); return; }
+    http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify(payload), function (ok, data) {
+      if (!ok || !data) { cb(false, { error: "تعذر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى." }); return; }
+      if (data.ok === false) { cb(false, data); return; }
+      setSession({ uid: data.uid, token: data.token, name: data.profile.name, phone: data.profile.phone, guardian: data.profile.guardian, rest: data.profile.rest || [0, 3], reminders: data.profile.reminders || ["18:00", "22:00"] });
+      setRest(data.profile.rest);
+      state = loadLocal();
+      if (data.state) { data.state.reports = data.state.reports || {}; data.state.comps = data.state.comps || []; data.state.kahf = data.state.kahf || {}; state = merge(state, data.state); }
+      saveLocal();
+      cb(true, data);
+    }, 20000);
+  }
+  function register(o, cb) { o.action = "register"; authCall(o, cb); }
+  function login(o, cb) { o.action = "login"; authCall(o, cb); }
+  function updateProfile(o, cb) {
+    var ss = getSession();
+    if (!ss) { goAccount(); return; }
+    var payload = { action: "profile", uid: ss.uid, token: ss.token };
+    for (var k in o) if (o.hasOwnProperty(k)) payload[k] = o[k];
+    http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify(payload), function (ok, data) {
+      if (ok && data && data.ok === false && data.error === "auth") { authFail(); return; }
+      if (!ok || !data || data.ok === false) { cb(false, (data && data.error) || "تعذر الاتصال بالخادم."); return; }
+      ss.name = data.profile.name; ss.phone = data.profile.phone; ss.guardian = data.profile.guardian; ss.rest = data.profile.rest || [0, 3]; ss.reminders = data.profile.reminders || ["18:00", "22:00"];
+      setSession(ss); setRest(ss.rest);
+      cb(true, data.profile);
+    }, 15000);
+  }
+  function resetRequest(phone, cb) {
+    http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify({ action: "resetRequest", phone: phone }), function (ok, data) {
+      if (!ok || !data) { cb(false, "تعذر الاتصال بالخادم."); return; }
+      cb(data.ok !== false, data.ok === false ? data.error : (data.message || ""));
+    }, 20000);
+  }
+  function resetConfirm(phone, code, pin, cb) {
+    http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify({ action: "resetConfirm", phone: phone, code: code, pin: pin }), function (ok, data) {
+      if (!ok || !data) { cb(false, "تعذر الاتصال بالخادم."); return; }
+      cb(data.ok !== false, data.ok === false ? data.error : (data.message || ""));
+    }, 20000);
+  }
+  /* منبهات التذكير: أول موعد إجباري والباقي اختياري (حتى 5) */
+  function mountReminders(box, initial) {
+    var list = (initial && initial.length) ? initial.slice() : ["18:00"];
+    function draw() {
+      var h = "", i;
+      for (i = 0; i < list.length; i++) {
+        h += '<div class="remrow"><input type="time" class="input remt" data-i="' + i + '" value="' + list[i] + '">' +
+             (i > 0 ? '<button type="button" class="btn small red" data-del="' + i + '">حذف</button>' : '<span class="badge">إجباري</span>') + '</div>';
+      }
+      if (list.length < 5) h += '<button type="button" class="btn small" data-add="1" style="margin-top:6px">➕ إضافة منبه</button>';
+      box.innerHTML = h;
+    }
+    box.oninput = function (ev) {
+      ev = ev || window.event; var t = ev.target || ev.srcElement;
+      if (t.className && t.className.indexOf("remt") > -1) list[Number(t.getAttribute("data-i"))] = t.value;
+    };
+    box.onclick = function (ev) {
+      ev = ev || window.event; var t = ev.target || ev.srcElement;
+      if (t.getAttribute && t.getAttribute("data-add")) { list.push("21:00"); draw(); }
+      else if (t.getAttribute && t.getAttribute("data-del")) { list.splice(Number(t.getAttribute("data-del")), 1); draw(); }
+    };
+    draw();
+    return { get: function () { return list.slice(); } };
+  }
+  /* زر إظهار/إخفاء كلمة السر (يلفّ كل حقل داخل .pwwrap) */
+  function bindEyes() {
+    var w = document.getElementsByClassName("pwwrap");
+    for (var i = 0; i < w.length; i++) (function (box) {
+      if (box.getAttribute("data-bound")) return; box.setAttribute("data-bound", "1");
+      var inp = box.getElementsByTagName("input")[0], btn = box.getElementsByTagName("button")[0];
+      if (!inp || !btn) return;
+      btn.onclick = function () { var show = inp.type === "password"; inp.type = show ? "text" : "password"; btn.innerHTML = show ? "🙈" : "👁"; };
+    })(w[i]);
+  }
+  function status(cb) {
+    if (!hasServer()) { cb(false, null); return; }
+    http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify({ action: "status" }), function (ok, data) { cb(ok && data && data.ok, data); }, 12000);
+  }
+  function onbKey() { var x = getSession(); return "qt_onb_" + (x ? x.uid : "anon"); }
+  function onboardingDone() { try { return window.localStorage.getItem(onbKey()) === "1"; } catch (e) { return true; } }
+  function setOnboardingDone() { try { window.localStorage.setItem(onbKey(), "1"); } catch (e) {} }
+  function logout() { setSession(null); window.location.replace("account.html"); }
   function getState() { return state; }
-  function commit(extra, cb) { saveLocal(); setDirty(true); push(extra, cb); }
+  /* رسائل واتساب المعلّقة: تُحفظ محليًا حتى تصل للخادم (حتى لو أُغلقت الصفحة بسرعة) */
+  function pendKey() { var x = getSession(); return "qt_pending_" + (x ? x.uid : "anon"); }
+  function getPending() { try { return JSON.parse(window.localStorage.getItem(pendKey()) || "null"); } catch (e) { return null; } }
+  function setPending(p) { try { if (p) window.localStorage.setItem(pendKey(), JSON.stringify(p)); else window.localStorage.removeItem(pendKey()); } catch (e) {} }
+  function commit(extra, cb) {
+    saveLocal(); setDirty(true);
+    if (extra && extra.notify) { extra.reqId = extra.reqId || ((getSession() || {}).uid + "-" + new Date().getTime()); setPending(extra); }
+    push(extra, function (ok, data) {
+      if (ok && data && data.ok !== false && extra && extra.reqId) { var p = getPending(); if (p && p.reqId === extra.reqId) setPending(null); }
+      if (cb) cb(ok, data);
+    });
+  }
+  function flushPending() {
+    var p = getPending();
+    if (p) push(p, function (ok, data) { if (ok && data && data.ok !== false) { var q = getPending(); if (q && q.reqId === p.reqId) setPending(null); } });
+    else if (isDirty()) push(null, null);
+  }
 
   function setStart(d) {
     state.start = d; state.settingsAt = new Date().getTime();
@@ -513,7 +662,8 @@ var SLOTS=[
   function putReport(date, rep, extra, cb) {
     rep.at = new Date().getTime();
     state.reports[date] = rep;
-    commit(extra, cb);
+    commit(extra, null);
+    if (cb) setTimeout(cb, 300);          // لا ننتظر الخادم: الإرسال يكمل في الخلفية ويُعاد تلقائيًا لو أُغلقت الصفحة
   }
   function putKahf(date, ok) {
     state.kahf[date] = { ok: !!ok, at: new Date().getTime() };
@@ -576,7 +726,7 @@ var SLOTS=[
       normNew();
       if (C >= TOTAL12 && newDone) { M.finished = true; break; }
       var dw = dowOf(date);
-      if (REST[dw]) { date = addDays(date, 1); continue; }     // الأحد والأربعاء: لا مهام
+      if (REST[dw]) { date = addDays(date, 1); continue; }     // يوم راحة: لا مهام
       if (dw === 5) {                                   // الجمعة
         var fr = { date: date, isFriday: true, kahf: st.kahf[date] || null,
                    status: (st.kahf[date] ? (st.kahf[date].ok ? "done" : "missed") : (date < today ? "none" : (date === today ? "today" : "future"))) };
@@ -893,6 +1043,52 @@ var SLOTS=[
   /* -------------------------------------------------------------------
      كلمات التشجيع
      ------------------------------------------------------------------- */
+  /* ---------- أوسمة الإنجاز ---------- */
+  function bestStreak(M) {
+    if (!M) return 0;
+    var best = 0, cur = 0, i;
+    for (i = 0; i < M.days.length; i++) {
+      var d = M.days[i];
+      if (d.isFriday || d.status === "future" || d.status === "today") continue;
+      if (d.status === "done" || d.status === "compensated") { cur++; if (cur > best) best = cur; } else cur = 0;
+    }
+    return best;
+  }
+  function badges(M) {
+    var out = [], best = bestStreak(M), done = M ? M.doneDays : 0, total = M ? Math.max(1, M.totalDays) : 1, pct = done / total * 100, extra = 0, i;
+    if (M) for (i = 0; i < M.days.length; i++) { var d = M.days[i]; if (!d.isFriday && d.mode === "rep" && ((d.t && d.t.st === "extra") || (d.nw && d.nw.st === "extra"))) extra++; }
+    out.push({ icon: "🌱", title: "البداية", desc: "أول تقرير", got: done >= 1 });
+    out.push({ icon: "🔥", title: "3 أيام", desc: "3 أيام متتالية", got: best >= 3 });
+    out.push({ icon: "⭐", title: "أسبوع", desc: "7 أيام متتالية", got: best >= 7 });
+    out.push({ icon: "🏅", title: "14 يومًا", desc: "14 يومًا متتالية", got: best >= 14 });
+    out.push({ icon: "👑", title: "30 يومًا", desc: "30 يومًا متتالية", got: best >= 30 });
+    out.push({ icon: "🚀", title: "المجتهد", desc: "زيادة في الحفظ", got: extra >= 1 });
+    out.push({ icon: "📈", title: "ربع الخطة", desc: "25% من الخطة", got: pct >= 25 });
+    out.push({ icon: "🌓", title: "نصف الخطة", desc: "50% من الخطة", got: pct >= 50 });
+    out.push({ icon: "🎓", title: "الختام", desc: "إتمام الخطة", got: pct >= 100 });
+    return out;
+  }
+
+  /* سطر واحد بتفاصيل التقرير (لقالب ولي الأمر؛ القوالب لا تقبل أسطرًا جديدة) */
+  function guardianDetail(d) {
+    var parts = [], i;
+    if (d.t) {
+      var ss = [];
+      for (i = 0; i < d.t.segs.length; i++) { var sg = d.t.segs[i]; ss.push("ربع " + sg.u + " (" + sg.info.title + (sg.info.ayat ? " " + sg.info.ayat : "") + ")"); }
+      var ts = ST_AR[d.t.st];
+      if (d.t.st === "extra") ts += " (زيادة " + fmtRaw(d.t.extra) + " ربع)";
+      if (d.t.st === "partial") ts += " (حفظ " + fmtRaw(d.t.am) + " ربع)";
+      parts.push("الكنز: " + ss.join(" + ") + " — " + ts);
+    }
+    if (d.nw) {
+      var ns = ST_AR[d.nw.st];
+      if (d.nw.st === "extra" || d.nw.st === "partial") ns += " (إلى آية " + d.nw.to2 + ")";
+      parts.push("الجديد: سورة المائدة، الآيات " + d.nw.from + "–" + d.nw.to + " — " + ns);
+    }
+    if (d.fx) parts.push("التثبيت: مراجعة ربع " + d.fx.qs.join(" و") + " من المائدة — " + (d.fx.st === "done" ? "تمت المراجعة" : "لم تتم المراجعة"));
+    return parts.join(" | ");
+  }
+
   function pick(a, seed) { return a[Math.abs(seed) % a.length]; }
   function encourage(d) {
     var seed = d ? d.n : 0, good = [], bad = [];
@@ -943,6 +1139,14 @@ var SLOTS=[
     try {
       if (window.localStorage.getItem("darkMode") === "true") document.body.className += " dark";
     } catch (e) {}
+    try {                       // رقم الدعم أسفل كل صفحة
+      if (!document.getElementById("qtSupport") && QT_CONFIG.SUPPORT_PHONE) {
+        var p = QT_CONFIG.SUPPORT_PHONE, local = "0" + p.substring(2);
+        var f = document.createElement("div"); f.id = "qtSupport"; f.className = "support";
+        f.innerHTML = '🤝 للدعم والاستفسار: <a href="https://wa.me/' + p + '" target="_blank" rel="noopener" style="direction:ltr;unicode-bidi:embed;font-weight:700">' + local + '</a>';
+        document.body.appendChild(f);
+      }
+    } catch (e) {}
   }
   function bindThemeButton(id) {
     var b = document.getElementById(id);
@@ -958,6 +1162,8 @@ var SLOTS=[
     };
   }
 
+  setRest((getSession() || {}).rest);
+
   return {
     SURAHS: SURAHS, SLOTS: SLOTS, MAIDA: MAIDA, UNITS: UNITS, TOTAL12: TOTAL12,
     esc: esc, ymd: ymd, parseYmd: parseYmd, addDays: addDays, dowOf: dowOf, todayStr: todayStr, isYmd: isYmd,
@@ -970,6 +1176,10 @@ var SLOTS=[
     ST_AR: ST_AR, ST_ICON: ST_ICON, tSummary: tSummary, nSummary: nSummary, fSummary: fSummary,
     todayTasksText: todayTasksText, reportText: reportText, buildReport: buildReport,
     weekStats: weekStats, monthStats: monthStats, encourage: encourage, defaultReportDate: defaultReportDate,
+    resetRequest: resetRequest, resetConfirm: resetConfirm, mountReminders: mountReminders, bindEyes: bindEyes,
+    setRest: setRest, rest: getRestArr, status: status, onboardingDone: onboardingDone, setOnboardingDone: setOnboardingDone,
+    badges: badges, guardianDetail: guardianDetail, bestStreak: bestStreak,
+    session: getSession, register: register, login: login, updateProfile: updateProfile, logout: logout, normPhone: normPhone,
     toast: toast, applyTheme: applyTheme, bindThemeButton: bindThemeButton,
     _setState: function (s) { state = s; }
   };
@@ -1251,8 +1461,8 @@ QT.openReport = function (app, date, hooks) {
         var text = QT.reportText(M2, d2);
         var finished = false;
         function go() { if (finished) return; finished = true; try { window.sessionStorage.setItem("qt_just", date); } catch (e) {} goDone(); }
-        QT.putReport(date, rep, { notify: text, date: date, n: day.n, kind: "report" }, function () { go(); });
-        setTimeout(go, 7000);
+        QT.putReport(date, rep, { notify: text, gdetail: QT.guardianDetail(d2), date: date, n: day.n, kind: "report" }, function () { go(); });
+        setTimeout(go, 2500);
       }
 
       /* ---------- الجمعة ---------- */

@@ -5,20 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0f5c3a">
     <title>متابعة حفظ القرآن الكريم</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <header class="top">
         <div class="top-row">
-            <span class="back">📖 حفظ القرآن</span>
+            <a class="back" href="settings.html">⚙️ الإعدادات</a>
             <button id="themeButton" class="theme-button">🌙 الوضع الليلي</button>
         </div>
         <div class="hello">
-            <small>السلام عليكم ورحمة الله</small>
-            <h1>متابعة حفظ القرآن الكريم</h1>
-            <span class="gold">تابع حفظك اليومي وحافظ على الاستمرار 🌱</span>
+            <small id="greet">السلام عليكم ورحمة الله</small>
+            <h1>خطة متابعة القرآن الكريم</h1>
+            <span class="gold">للصف الثالث الإعدادي</span>
         </div>
     </header>
 
@@ -40,8 +40,8 @@
                 <p id="dayDescription"></p>
                 <div id="todayTasks" class="muted" style="white-space:pre-line;line-height:1.9"></div>
             </div>
-            <div class="day-progress">
-                <strong id="dayPercentage">0%</strong>
+            <div class="ringbox">
+                <div class="ring" id="ring"><div class="ring-in"><strong id="dayPercentage">0%</strong></div></div>
                 <span class="small-title">من الخطة</span>
             </div>
         </section>
@@ -67,6 +67,11 @@
             <p id="progressMessage">ابدأ بتسجيل أول إنجاز لك اليوم 💪</p>
         </section>
 
+        <section class="card">
+            <div class="section-title"><h2>🏅 أوسمتي</h2><span id="badgeCount" class="muted"></span></div>
+            <div class="badge-list" id="badgeList"></div>
+        </section>
+
         <section class="search-section">
             <h2>🔎 البحث عن سورة</h2>
             <input type="text" id="searchInput" placeholder="اكتب اسم السورة...">
@@ -80,6 +85,15 @@
         <section class="reminder-section">
             <h2>⏰ التذكير اليومي</h2>
             <p class="muted">يصلك تذكير على الواتساب الساعة 6 مساءً (برابط تقرير اليوم)، وإن لم تملأ التقرير يصلك تذكير آخر الساعة 10 مساءً.</p>
+        </section>
+
+        <section class="card" id="accountBox">
+            <h2>👤 حسابي</h2>
+            <div class="who" id="whoBox"></div>
+            <div class="row">
+                <a class="btn small" href="settings.html">⚙️ الإعدادات</a>
+                <a class="btn small gold" href="onboarding.html">📖 التعليمات</a>
+            </div>
         </section>
 
     </main>
