@@ -1,15 +1,4 @@
 /* =====================================================================
-   Engine.gs — محرّك الخطة لدى الخادم (نسخة من engine.js ولا يُعدَّل يدويًا)
-   يحسب مهام كل يوم لكل مشترك حتى تُرسل رسائل الصباح لولي الأمر بالمهام الصحيحة.
-   ===================================================================== */
-var window = {
-  localStorage: { getItem: function () { return null; }, setItem: function () {}, removeItem: function () {} },
-  sessionStorage: { getItem: function () { return null; }, setItem: function () {}, removeItem: function () {} },
-  location: { search: "", pathname: "" }
-};
-var document = {};
-
-/* =====================================================================
    engine.js — محرّك خطة حفظ القرآن الكريم (مشترك بين كل الصفحات)
    لا تعدّل فيه إلا الإعدادات في الأعلى (QT_CONFIG).
    مكتوب بصيغة قديمة (ES5) ليعمل على الأجهزة القديمة أيضًا.
@@ -516,7 +505,7 @@ var SLOTS=[
       var restChanged = false;
       if (data.profile) {
         var oldRest = JSON.stringify(ss.rest || [0, 3]);
-        ss.name = data.profile.name; ss.phone = data.profile.phone; ss.guardian = data.profile.guardian; ss.rest = data.profile.rest || [0, 3]; ss.reminders = data.profile.reminders || ["18:00", "22:00"];
+        ss.name = data.profile.name; ss.phone = data.profile.phone; ss.guardian = data.profile.guardian; ss.rest = data.profile.rest || [0, 3]; ss.reminders = data.profile.reminders || ["18:00", "22:00"]; ss.tasksStudent = data.profile.tasksStudent || ["06:00"]; ss.tasksGuardian = data.profile.tasksGuardian || ["06:00"];
         setSession(ss); setRest(ss.rest);
         restChanged = oldRest !== JSON.stringify(ss.rest);
       }
@@ -570,7 +559,7 @@ var SLOTS=[
     http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify(payload), function (ok, data) {
       if (!ok || !data) { cb(false, { error: "تعذر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى." }); return; }
       if (data.ok === false) { cb(false, data); return; }
-      setSession({ uid: data.uid, token: data.token, name: data.profile.name, phone: data.profile.phone, guardian: data.profile.guardian, rest: data.profile.rest || [0, 3], reminders: data.profile.reminders || ["18:00", "22:00"] });
+      setSession({ uid: data.uid, token: data.token, name: data.profile.name, phone: data.profile.phone, guardian: data.profile.guardian, rest: data.profile.rest || [0, 3], reminders: data.profile.reminders || ["18:00", "22:00"], tasksStudent: data.profile.tasksStudent || ["06:00"], tasksGuardian: data.profile.tasksGuardian || ["06:00"] });
       setRest(data.profile.rest);
       state = loadLocal();
       if (data.state) { data.state.reports = data.state.reports || {}; data.state.comps = data.state.comps || []; data.state.kahf = data.state.kahf || {}; state = merge(state, data.state); }
@@ -588,7 +577,7 @@ var SLOTS=[
     http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify(payload), function (ok, data) {
       if (ok && data && data.ok === false && data.error === "auth") { authFail(); return; }
       if (!ok || !data || data.ok === false) { cb(false, (data && data.error) || "تعذر الاتصال بالخادم."); return; }
-      ss.name = data.profile.name; ss.phone = data.profile.phone; ss.guardian = data.profile.guardian; ss.rest = data.profile.rest || [0, 3]; ss.reminders = data.profile.reminders || ["18:00", "22:00"];
+      ss.name = data.profile.name; ss.phone = data.profile.phone; ss.guardian = data.profile.guardian; ss.rest = data.profile.rest || [0, 3]; ss.reminders = data.profile.reminders || ["18:00", "22:00"]; ss.tasksStudent = data.profile.tasksStudent || ["06:00"]; ss.tasksGuardian = data.profile.tasksGuardian || ["06:00"];
       setSession(ss); setRest(ss.rest);
       cb(true, data.profile);
     }, 15000);
@@ -670,6 +659,26 @@ var SLOTS=[
     state.start = d; state.settingsAt = new Date().getTime();
     commit(null, null);
   }
+  function reportOf(st, date) { var r = st && st.reports ? st.reports[date] : null; return (r && !r.cancelled) ? r : null; }
+  // يضيف سجل التقرير السابق (لو كان اليوم مُرسلًا من قبل) إلى التقرير الجديد حتى لا يضيع الإنجاز السابق
+  function withHistory(date, rep) {
+    var old = state && state.reports ? state.reports[date] : null, base = null;
+    if (old && !old.cancelled) base = old; else if (old && old.cancelled && old.prev) base = old.prev;
+    if (base) {
+      var h = (base.hist || []).slice();
+      h.push({ at: base.at, t: base.t, nw: base.nw, fx: base.fx });
+      rep.hist = h.slice(-20);
+    }
+    return rep;
+  }
+  // إلغاء تقرير يوم: يصبح اليوم «تقريرًا لم يُملأ» ويُحفظ التقرير القديم داخل prev (لا يُمسح شيء)
+  function cancelReport(date) {
+    var old = state.reports[date];
+    if (!old || old.cancelled) return false;
+    state.reports[date] = { cancelled: true, at: new Date().getTime(), prev: old };
+    commit(null, null);
+    return true;
+  }
   function putReport(date, rep, extra, cb) {
     rep.at = new Date().getTime();
     state.reports[date] = rep;
@@ -746,6 +755,7 @@ var SLOTS=[
       }
       n++;
       var rep = st.reports[date] || null;
+      if (rep && rep.cancelled) rep = null;                 // تقرير أُلغي: يُعامل كأنه لم يُرسل (ويُحفظ القديم داخل prev)
       var mode = rep ? "rep" : (date < today ? "miss" : "proj");
       var day = { n: n, date: date, isFriday: false, report: rep, mode: mode, t: null, nw: null, fx: null };
 
@@ -1126,7 +1136,7 @@ var SLOTS=[
     var now = new Date(), t = ymd(now);
     if (now.getHours() < 4) {
       var y = addDays(t, -1);
-      if (state && !state.reports[y] && dowOf(y) !== 5 && !isRest(y) && state.start && y >= state.start) return y;
+      if (state && !reportOf(state, y) && dowOf(y) !== 5 && !isRest(y) && state.start && y >= state.start) return y;
     }
     return t;
   }
@@ -1188,6 +1198,7 @@ var SLOTS=[
     todayTasksText: todayTasksText, reportText: reportText, buildReport: buildReport,
     weekStats: weekStats, monthStats: monthStats, encourage: encourage, defaultReportDate: defaultReportDate,
     resetRequest: resetRequest, resetConfirm: resetConfirm, mountReminders: mountReminders, bindEyes: bindEyes,
+    reportOf: reportOf, withHistory: withHistory, cancelReport: cancelReport,
     setRest: setRest, rest: getRestArr, status: status, onboardingDone: onboardingDone, setOnboardingDone: setOnboardingDone,
     badges: badges, guardianDetail: guardianDetail, bestStreak: bestStreak,
     session: getSession, register: register, login: login, updateProfile: updateProfile, logout: logout, normPhone: normPhone,
@@ -1440,13 +1451,22 @@ QT.openReport = function (app, date, hooks) {
         var sec = g("data-sec");
         if (sec) {
           var old = form[sec] || {};
+          if (old.st && old.st === g("data-st")) { form[sec] = null; syncDay(); draw(); return; }      // الضغط مرة ثانية يلغي الاختيار
           form[sec] = { st: g("data-st"), amtText: (g("data-st") === old.st ? old.amtText : ""), toText: (g("data-st") === old.st ? old.toText : "") };
           syncDay(); draw(); return;
         }
-        if (g("data-day")) { setAll(g("data-day")); draw(); return; }
+        if (g("data-day")) {
+          if (form.day === g("data-day")) { form.t = null; form.nw = null; form.fx = null; form.day = ""; }   // الضغط مرة ثانية يلغي كل الاختيارات
+          else setAll(g("data-day"));
+          draw(); return;
+        }
         if (g("data-chip")) {
           var cs = g("data-chip"), v = g("data-v");
           form[cs] = form[cs] || {};
+          if (t.className.indexOf("sel") > -1) {                                   // الضغط على الاختيار المحدد يلغيه
+            if (cs === "t") form.t.amtText = ""; else form.nw.toText = "";
+            t.className = t.className.replace(/ ?sel/g, ""); updateBtn(); return;
+          }
           if (cs === "t") form.t.amtText = v; else form.nw.toText = v;
           var sibs = t.parentNode.getElementsByTagName("button");
           for (var i = 0; i < sibs.length; i++) sibs[i].className = sibs[i].className.replace(/ ?sel/g, "");
@@ -1456,6 +1476,8 @@ QT.openReport = function (app, date, hooks) {
       };
 
       function send() {
+        var any = (form.t && form.t.st) || (form.nw && form.nw.st) || (form.fx && form.fx.st);
+        if (!any) return;                                       // لا شيء محدد: الزر لا يعمل (كأنه لم يُكتب شيء)
         var r = check(), eb = $("errBox");
         if (!r.ok) {
           var h = '<div class="err"><b>لا يمكن الإرسال، ناقصك:</b><br>';
@@ -1466,7 +1488,7 @@ QT.openReport = function (app, date, hooks) {
         }
         busy = true; eb.innerHTML = '<div class="ok-msg">⏳ جاري الإرسال...</div>';
         $("sendBtn").className = "send off";
-        var rep = r.report, st = QT.getState();
+        var rep = QT.withHistory(date, r.report), st = QT.getState();
         st.reports[date] = rep;
         var M2 = QT.compute(st, QT.todayStr()), d2 = M2.byDate[date];
         var text = QT.reportText(M2, d2);
@@ -1523,13 +1545,13 @@ QT.openReport = function (app, date, hooks) {
       if (d.isFriday) { setTitle("يوم الجمعة 🕌"); fridayPage(); return; }
       if (date > QT.todayStr()) { setTitle("اليوم " + d.n); msgPage("⏳ هذا اليوم لم يأتِ بعد", "يمكنك ملء تقرير اليوم عند حلول موعده.", ["plan.html", "📋 الخطة"]); return; }
       var edit = !!hooks.edit;
-      if (st.reports[date] && !edit) { goDone(); return; }
+      if (QT.reportOf(st, date) && !edit) { goDone(); return; }
       if (!hooks.fromPlan) { try { if (window.sessionStorage.getItem("qt_just") === date && !edit) { goDone(); return; } } catch (e) {} }
       day = d;
-      if (st.reports[date]) {
+      if (QT.reportOf(st, date)) {
         var copy = JSON.parse(JSON.stringify(st)); delete copy.reports[date];
         var Mx = QT.compute(copy, date); day = Mx.byDate[date] || d;
-        var rp = st.reports[date];
+        var rp = QT.reportOf(st, date);
         if (day.t && rp.t) form.t = { st: rp.t.st, amtText: rp.t.amt ? QT.fmtRaw(rp.t.amt) : "" };
         if (day.nw && rp.nw) form.nw = { st: rp.nw.st, toText: rp.nw.to ? String(rp.nw.to) : "" };
         if (day.fx && rp.fx) form.fx = { st: rp.fx.st };

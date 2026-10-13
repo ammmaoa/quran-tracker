@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0f5c3a">
     <title>تقرير اليوم</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -32,15 +32,21 @@
       QT.applyTheme();
       QT.bindThemeButton("themeButton");
       var $ = function (id) { return document.getElementById(id); };
+      var rdate = "", edit = false;
       QT.init(function () {
-        var date = QT.getParam("d");
-        if (!QT.isYmd(date)) date = QT.defaultReportDate();
-        QT.openReport($("app"), date, {
-          edit: QT.getParam("edit") === "1",
+        rdate = QT.getParam("d");
+        if (!QT.isYmd(rdate)) rdate = QT.defaultReportDate();
+        edit = QT.getParam("edit") === "1";
+        QT.openReport($("app"), rdate, {
+          edit: edit,
           setTitle: function (t) { $("hTitle").innerHTML = t; },
           setSub: function (s) { $("hSub").innerHTML = s || " "; }
         });
-      }, 6000);
+      }, 0, function (ok, changed) {
+        // لو اتضح من الخادم أن تقرير هذا اليوم أُرسل من جهاز آخر: ننتقل لصفحة التقدم
+        var st = QT.getState();
+        if (changed && !edit && st && QT.reportOf(st, rdate)) window.location.replace("success.html?d=" + rdate);
+      });
     })();
     </script>
 </body>

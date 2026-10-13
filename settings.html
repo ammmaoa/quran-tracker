@@ -45,7 +45,19 @@
         </section>
 
         <section class="box">
-            <div class="box-h"><div class="ico">⏰</div><div><h3>مواعيد التذكير</h3><small>أول موعد إجباري وأضف ما تشاء — يتوقف التذكير لو سجّلت تقريرك</small></div></div>
+            <div class="box-h"><div class="ico">🕕</div><div><h3>مهام اليوم مرسلة إلى الطالب</h3><small>أول موعد إجباري وأضف ما تشاء</small></div></div>
+            <div id="sTs"></div>
+            <button type="button" class="btn small" id="saveTs" style="margin-top:10px">💾 حفظ المواعيد</button>
+        </section>
+
+        <section class="box" id="tgSection">
+            <div class="box-h"><div class="ico">👪</div><div><h3>مهام اليوم مرسلة إلى ولي الأمر</h3><small>أول موعد إجباري وأضف ما تشاء (تظهر بعد إضافة رقم ولي الأمر)</small></div></div>
+            <div id="sTg"></div>
+            <button type="button" class="btn small" id="saveTg" style="margin-top:10px">💾 حفظ المواعيد</button>
+        </section>
+
+        <section class="box">
+            <div class="box-h"><div class="ico">📝</div><div><h3>تذكير الطالب بملء التقرير</h3><small>أول موعد إجباري وأضف ما تشاء — يتوقف التذكير لو سجّلت تقريرك</small></div></div>
             <div id="sRem"></div>
             <button type="button" class="btn small" id="saveRem" style="margin-top:10px">💾 حفظ المواعيد</button>
         </section>
@@ -93,7 +105,7 @@
       QT.bindEyes();
       var $ = function (id) { return document.getElementById(id); };
       var PHONE_ERR = "رقم الهاتف لازم يكون 11 رقمًا ويبدأ بـ 010 أو 011 أو 012 أو 015.";
-      var DAYS = [[6, "السبت"], [0, "الأحد"], [1, "الاثنين"], [2, "الثلاثاء"], [3, "الأربعاء"], [4, "الخميس"]], restSel = {}, rem = null;
+      var DAYS = [[6, "السبت"], [0, "الأحد"], [1, "الاثنين"], [2, "الثلاثاء"], [3, "الأربعاء"], [4, "الخميس"]], restSel = {}, rem = null, remS = null, remG = null;
 
       function local(p) { return p && p.indexOf("20") === 0 ? "0" + p.substring(2) : (p || ""); }
       function fill() {
@@ -103,6 +115,9 @@
         restSel = {}; var cur = QT.rest(), i; for (i = 0; i < cur.length; i++) restSel[cur[i]] = 1;
         drawDays();
         rem = QT.mountReminders($("sRem"), ss.reminders && ss.reminders.length ? ss.reminders : ["18:00"]);
+        remS = QT.mountReminders($("sTs"), ss.tasksStudent && ss.tasksStudent.length ? ss.tasksStudent : ["06:00"]);
+        remG = QT.mountReminders($("sTg"), ss.tasksGuardian && ss.tasksGuardian.length ? ss.tasksGuardian : ["06:00"]);
+        $("tgSection").style.display = ss.guardian ? "block" : "none";
       }
       function drawDays() {
         var h = "";
@@ -137,10 +152,18 @@
         if (g && !QT.normPhone(g)) { QT.toast("رقم ولي الأمر: " + PHONE_ERR, "err2"); return; }
         save({ guardian: g }, g ? "تم حفظ رقم ولي الأمر ✅" : "تم إيقاف الإرسال لولي الأمر");
       };
+      function timesOk(t) { for (var i = 0; i < t.length; i++) if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t[i] || "")) return false; return t.length > 0; }
       $("saveRem").onclick = function () {
-        var t = rem.get(), i;
-        for (i = 0; i < t.length; i++) if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t[i] || "")) { QT.toast("تأكد أن كل المواعيد مكتملة", "err2"); return; }
-        save({ reminders: t }, "تم حفظ المواعيد ✅");
+        var t = rem.get(); if (!timesOk(t)) { QT.toast("تأكد أن كل المواعيد مكتملة", "err2"); return; }
+        save({ reminders: t }, "تم حفظ مواعيد تذكير التقرير ✅");
+      };
+      $("saveTs").onclick = function () {
+        var t = remS.get(); if (!timesOk(t)) { QT.toast("تأكد أن كل المواعيد مكتملة", "err2"); return; }
+        save({ tasksStudent: t }, "تم حفظ مواعيد مهام الطالب ✅");
+      };
+      $("saveTg").onclick = function () {
+        var t = remG.get(); if (!timesOk(t)) { QT.toast("تأكد أن كل المواعيد مكتملة", "err2"); return; }
+        save({ tasksGuardian: t }, "تم حفظ مواعيد مهام ولي الأمر ✅");
       };
       $("saveRest").onclick = function () {
         var a = [], k; for (k in restSel) if (restSel.hasOwnProperty(k)) a.push(Number(k));

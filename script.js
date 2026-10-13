@@ -101,6 +101,7 @@
     else if (pct < 100) msg.innerHTML = "أحسنت! أنت تقترب من إتمام الخطة 💪";
     else msg.innerHTML = "ما شاء الله! أتممت الخطة 🎉";
     $("reportLink").href = "report.html?d=" + today;
+    $("tasksLink").href = "today.html?d=" + today;
   }
 
   $("startSave").onclick = function () {

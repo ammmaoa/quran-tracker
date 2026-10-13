@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0f5c3a">
     <title>التقدم والتشجيع</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
 </head>
 <body class="rp">
 
@@ -94,7 +94,7 @@
           h += '<h2>🗓️ ' + QT.MONTHS[Number(mo.ym.slice(5, 7)) - 1] + ' ' + mo.ym.slice(0, 4) + '</h2>' + kv("الأيام الناقصة هذا الشهر", mo.missed) + kv("أيام الحفظ المحسوبة", mo.days);
         }
         h += '</div>';
-        var canEdit = d && !d.isFriday && st.reports[date];
+        var canEdit = d && !d.isFriday && QT.reportOf(st, date);
         if (canEdit) h += '<a class="btn blue" style="display:block;text-align:center;margin-bottom:12px;padding:14px" href="report.html?d=' + date + '&edit=1">✏️ إعادة الإرسال (تعديل التقرير)</a>';
         h += '<nav class="navbar"><a href="plan.html"><span>📋</span>الخطة</a><a href="index.html"><span>🏠</span>الرئيسية</a><a href="report.html?d=' + date + '"><span>📝</span>التقرير</a></nav>';
         app.innerHTML = h;
@@ -118,7 +118,9 @@
         if (!st.start) { app.innerHTML = '<div class="card"><h2>📅 حدّد تاريخ بداية الخطة أولًا</h2><a class="btn" href="index.html">الرئيسية</a></div>'; return; }
         M = QT.compute(st, QT.todayStr());
         draw();
-      }, 6000);
+      }, 0, function (ok, changed) {
+        if (changed) { M = QT.compute(QT.getState(), QT.todayStr()); draw(); }
+      });
     })();
     </script>
 </body>

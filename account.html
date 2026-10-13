@@ -46,7 +46,15 @@
             <label class="lbl">الأيام التي لا تفرغ فيها للحفظ <small>(اضغط اليوم ليصبح راحة بدون مهام — اتركها كما هي لو تفرغ كل الأيام)</small></label>
             <div class="daychips" id="dayChips"></div>
 
-            <label class="lbl">متى يصلك تذكير التقرير؟ <small>(أول موعد إجباري، وأضف ما تشاء — يتوقف التذكير لو سجّلت تقريرك)</small></label>
+            <label class="lbl">🕕 مهام اليوم مرسلة إلى الطالب <small>(أول موعد إجباري، وأضف ما تشاء)</small></label>
+            <div id="tsBox"></div>
+
+            <div id="tgWrap" style="display:none">
+                <label class="lbl">👪 مهام اليوم مرسلة إلى ولي الأمر <small>(أول موعد إجباري، وأضف ما تشاء)</small></label>
+                <div id="tgBox"></div>
+            </div>
+
+            <label class="lbl">📝 تذكير الطالب بملء التقرير <small>(أول موعد إجباري، وأضف ما تشاء — يتوقف التذكير لو سجّلت تقريرك)</small></label>
             <div id="remBox"></div>
 
             <label class="consent"><input type="checkbox" id="rConsent"><span>أوافق على استلام تذكيرات وتقارير الحفظ على واتساب (وموافقة ولي الأمر على ذلك إن أُضيف رقمه).</span></label>
@@ -124,6 +132,9 @@
 
       /* مواعيد التذكير */
       var rem = QT.mountReminders($("remBox"), ["18:00"]);
+      var remS = QT.mountReminders($("tsBox"), ["06:00"]);
+      var remG = QT.mountReminders($("tgBox"), ["06:00"]);
+      $("rGuardian").oninput = function () { $("tgWrap").style.display = this.value.replace(/\s/g, "") ? "block" : "none"; };
 
       /* حد التسجيل (رقم Meta التجريبي يقبل 5 أرقام فقط) */
       var closed = false;
@@ -150,14 +161,17 @@
         if (pin.length < 4) { showErr("regErr", "كلمة السر لا تقل عن 4 أرقام أو حروف."); return; }
         if (g && !QT.normPhone(g)) { showErr("regErr", "رقم ولي الأمر: " + PHONE_ERR); return; }
         if (g && QT.normPhone(g) === QT.normPhone(phone)) { showErr("regErr", "رقم ولي الأمر لازم يكون مختلفًا عن رقمك."); return; }
-        var times = rem.get(), k;
-        for (k = 0; k < times.length; k++) if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(times[k] || "")) { showErr("regErr", "اختر موعد التذكير الأول (إجباري) وتأكد أن كل المواعيد مكتملة."); return; }
+        var times = rem.get(), k, ts = remS.get(), tg = remG.get();
+        var okT = function (arr) { for (var z = 0; z < arr.length; z++) if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(arr[z] || "")) return false; return arr.length > 0; };
+        if (!okT(ts)) { showErr("regErr", "اختر موعد «مهام اليوم مرسلة إلى الطالب» (إجباري) وتأكد أن كل المواعيد مكتملة."); return; }
+        if (g && !okT(tg)) { showErr("regErr", "اختر موعد «مهام اليوم مرسلة إلى ولي الأمر» (إجباري) وتأكد أن كل المواعيد مكتملة."); return; }
+        if (!okT(times)) { showErr("regErr", "اختر موعد تذكير ملء التقرير (إجباري) وتأكد أن كل المواعيد مكتملة."); return; }
         if (!$("rConsent").checked) { showErr("regErr", "لازم توافق على استلام الرسائل على واتساب."); return; }
         var restArr = [];
         for (k in restSel) if (restSel.hasOwnProperty(k)) restArr.push(Number(k));
         if (restArr.length > 5) { showErr("regErr", "اترك يومًا واحدًا على الأقل للحفظ."); return; }
         showErr("regErr", ""); lock($("regBtn"), true);
-        QT.register({ name: name, phone: phone, pin: pin, guardian: g, rest: restArr, reminders: times, consent: true }, function (ok, data) {
+        QT.register({ name: name, phone: phone, pin: pin, guardian: g, rest: restArr, reminders: times, tasksStudent: ts, tasksGuardian: g ? tg : ["06:00"], consent: true }, function (ok, data) {
           if (ok) { window.location.replace("onboarding.html"); return; }
           lock($("regBtn"), false, "✅ إنشاء الحساب والبدء"); showErr("regErr", data && data.error || "حدث خطأ.");
         });

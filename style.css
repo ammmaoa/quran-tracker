@@ -244,3 +244,22 @@ body.dark .ring-in strong, body.dark .badge-item b { color: #bfe9cf; }
 body.dark .namebox { background: #17291f; } body.dark .namebox b { color: #bfe9cf; }
 .reset { background: var(--soft); border: 1px solid var(--line); border-radius: 16px; padding: 12px; margin-top: 12px; }
 .linkbtn { background: transparent; color: var(--g2); font-weight: 700; font-size: 14px; padding: 8px 0; text-decoration: underline; }
+
+/* أزرار التنقل في الرئيسية: صفان (4 أزرار) */
+.navigation-section { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 700px) { .navigation-section { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- حالات الأيام في الخطة ---------- */
+.btnstack { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.dayline .sub.miss { color: #a93228; font-weight: 700; }
+.dayline.pendingrep { border-color: #cfd6d2; background: #f5f6f5; }
+.dayline.miss-n { border-color: #ecd9a4; background: #fff9e8; }
+.dayline.miss-t { border-color: #b8d4ee; background: #eef6fd; }
+.dayline.miss-b { border-color: #efc0bb; background: #fff3f2; }
+.dayline.donecard { border-color: #bfe3cf; background: #f1faf5; }
+body.dark .dayline.pendingrep { background: #262b29; border-color: #3a403d; }
+body.dark .dayline.miss-n { background: #2a2512; border-color: #5d4e1c; }
+body.dark .dayline.miss-t { background: #15222f; border-color: #2c4a66; }
+body.dark .dayline.miss-b { background: #2d1a18; border-color: #66312c; }
+body.dark .dayline.donecard { background: #17291f; border-color: #2c5a41; }
+body.dark .dayline .sub.miss { color: #f1a79f; }

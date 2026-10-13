@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0f5c3a">
     <title>خطة حفظ القرآن الكريم</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="rp">
@@ -66,16 +66,44 @@
         }
         return h;
       }
-      function dayRow(d) {
+      var defMap = {};                         // التاريخ -> النواقص المفتوحة {t, n}
+      function buildDefs() {
+        defMap = {};
+        for (var i = 0; i < M.tDefOpen.length; i++) { var a = M.tDefOpen[i]; (defMap[a.date] = defMap[a.date] || {}).t = a; }
+        for (var j = 0; j < M.nDefOpen.length; j++) { var c = M.nDefOpen[j]; (defMap[c.date] = defMap[c.date] || {}).n = c; }
+      }
+      function missingText(df) {                // ما الناقص بالضبط
+        var parts = [];
+        if (df.n) parts.push("الجديد: ناقص " + df.n.rem + " آية (من " + df.n.curFrom + " إلى " + df.n.to + ")");
+        if (df.t) parts.push("الكنز: ناقص " + QT.fmtU(df.t.rem) + " ربع");
+        return parts;
+      }
+      function dayRow(d, kind) {
         if (d.isFriday) {
           return '<div class="dayline"><div class="meta"><div class="title">🕌 الجمعة — ' + QT.prettyDate(d.date) + '</div><div class="sub">سورة الكهف + تعويض النواقص</div></div>' +
                  '<button type="button" class="btn small gray" data-rep="' + d.date + '">فتح</button></div>';
         }
-        var cls = d.status === "today" ? " today" : d.status === "missed" ? " missed" : "";
-        var btn = '';
-        if (d.status === "done" || d.status === "compensated") btn = '<button type="button" class="btn small blue" data-rep="' + d.date + '" data-edit="1">↩️ إعادة فتح</button>';
-        else if (d.status === "today" || d.status === "missed") btn = '<button type="button" class="btn small" data-rep="' + d.date + '">📝 تقرير اليوم</button>';
-        return '<div class="dayline' + cls + '"><div class="meta"><div class="title">اليوم ' + d.n + ' — ' + QT.prettyDate(d.date) + ' ' + badge(d.status) + '</div>' + dayDetail(d) + '</div>' + btn + '</div>';
+        var cls = d.status === "today" ? " today" : "", btns = '', note = '', bd = badge(d.status);
+        if (kind === "pending") {                                   // تقرير لم يُملأ
+          cls = " pendingrep"; bd = '<span class="badge bad">📝 تقرير لم يُملأ</span>';
+          btns = '<button type="button" class="btn small" data-rep="' + d.date + '">📝 املأ التقرير</button>';
+        } else if (kind === "incomplete") {                         // ناقص: حسب نوع النقص
+          var df = defMap[d.date] || {}, mt = missingText(df);
+          cls = df.t && df.n ? " miss-b" : (df.n ? " miss-n" : " miss-t");
+          bd = '<span class="badge bad">⚠️ ناقص ' + (df.t && df.n ? "الجديد والكنز" : (df.n ? "الجديد فقط" : "الكنز فقط")) + '</span>';
+          note = '<div class="sub miss">' + esc(mt.join(" — ")) + '</div>';
+          btns = '<button type="button" class="btn small blue" data-rep="' + d.date + '" data-edit="1">↩️ إعادة فتح لإكمال النواقص</button>' +
+                 '<button type="button" class="btn small red" data-cancel="' + d.date + '">🚫 إلغاء التقرير</button>';
+        } else if (kind === "done") {                               // مكتمل
+          cls = " donecard";
+          btns = '<button type="button" class="btn small blue" data-rep="' + d.date + '" data-edit="1">↩️ إعادة فتح</button>' +
+                 '<button type="button" class="btn small red" data-cancel="' + d.date + '">🚫 إلغاء التقرير</button>';
+          var hist = d.report && d.report.hist && d.report.hist.length ? '<div class="sub">🕘 تم تعديل هذا التقرير ' + d.report.hist.length + ' مرة (السجل السابق محفوظ)</div>' : '';
+          note = hist;
+        } else if (d.status === "today") {
+          btns = '<button type="button" class="btn small" data-rep="' + d.date + '">📝 تقرير اليوم</button>';
+        }
+        return '<div class="dayline' + cls + '"><div class="meta"><div class="title">اليوم ' + d.n + ' — ' + QT.prettyDate(d.date) + ' ' + bd + '</div>' + note + dayDetail(d) + '</div><div class="btnstack">' + btns + '</div></div>';
       }
 
       function draw() {
@@ -92,6 +120,8 @@
         h += '<div class="card"><h2>📊 ملخص الخطة</h2>' +
           kv("📅 تاريخ البداية", QT.prettyDate(M.start)) +
           kv("🏁 تنتهي بتاريخ", QT.prettyDate(M.endDate)) +
+          kv("🗓️ مدة الخطة", M.totalDays + " يوم حفظ (تُحسب أيام الحفظ فقط)") +
+          '<div class="sub" style="color:var(--mut);font-size:12.5px;line-height:1.8">= ' + calBreak(M) + '</div>' +
           kv("💎 مدة الكنز الحالية", M.treasureDays + " يوم") +
           kv("📖 مدة الجديد الحالية", M.newDays + " يوم") +
           kv("✅ الأيام المكتملة", M.doneDays + " (" + pct + "%)") +
@@ -104,13 +134,15 @@
           '<p class="muted">تغيير التاريخ يغيّر البداية فقط، والنظام يعيد حساب الأيام منها.</p></div>';
 
         /* الأيام القادمة */
-        var upcoming = [], done = [];
+        buildDefs();
+        var upcoming = [], done = [], pending = [], incomplete = [];
         for (i = 0; i < M.days.length; i++) {
           var d = M.days[i];
           if (d.isFriday) { if (d.date >= today) upcoming.push(d); continue; }
-          if (d.status === "done" || d.status === "compensated") done.push(d);
-          else if (d.status === "missed") { /* في قسم الناقصة */ }
-          else upcoming.push(d);
+          if (d.status === "today" || d.status === "future") { upcoming.push(d); continue; }
+          if (d.mode === "miss") { pending.push(d); continue; }                       // مضى اليوم بلا تقرير (أو أُلغي تقريره)
+          if (defMap[d.date]) incomplete.push(d);                                     // له تقرير لكن فيه نقص
+          else done.push(d);                                                          // مكتمل
         }
         h += '<div class="card"><h2>📍 الأيام الحالية والقادمة</h2>';
         var lim = showAll ? upcoming.length : Math.min(upcoming.length, 7);
@@ -119,13 +151,25 @@
         if (upcoming.length > 7) h += '<button class="btn small gray" id="toggleAll">' + (showAll ? "إخفاء" : "عرض كل الأيام القادمة (" + upcoming.length + ")") + '</button>';
         h += '</div>';
 
+        /* تقارير لم تُملأ */
+        h += '<details class="acc"' + (pending.length ? " open" : "") + '><summary>📝 تقارير لم تُملأ (' + pending.length + ')</summary><div class="body">';
+        if (!pending.length) h += '<p class="muted">لا توجد تقارير ناقصة، أحسنت 👏</p>';
+        for (i = 0; i < pending.length; i++) h += dayRow(pending[i], "pending");
+        h += '</div></details>';
+
+        /* أيام ناقصة (لها تقرير وفيها نقص) */
+        h += '<details class="acc"' + (incomplete.length ? " open" : "") + '><summary>⚠️ أيام ناقصة (' + incomplete.length + ')</summary><div class="body">';
+        if (!incomplete.length) h += '<p class="muted">لا توجد أيام ناقصة 👏</p>';
+        for (i = 0; i < incomplete.length; i++) h += dayRow(incomplete[i], "incomplete");
+        h += '</div></details>';
+
         /* الأيام الناقصة والتعويض */
         h += '<details class="acc"' + (M.missedDays.length || M.tDefOpen.length || M.nDefOpen.length ? " open" : "") + '><summary>⚠️ الناقص والتعويض (الجمعة)</summary><div class="body" id="compBox"></div></details>';
 
         /* المكتملة */
         h += '<details class="acc"><summary>✅ الأيام المكتملة (' + done.length + ')</summary><div class="body">';
         if (!done.length) h += '<p class="muted">لا توجد أيام مكتملة بعد.</p>';
-        for (i = done.length - 1; i >= 0; i--) h += dayRow(done[i]);
+        for (i = done.length - 1; i >= 0; i--) h += dayRow(done[i], "done");
         h += '</div></details>';
 
         /* الجديد */
@@ -165,6 +209,11 @@
         app.innerHTML = h;
         QT.renderComp($("compBox"), M, QT.dowOf(today) === 5, draw);
       }
+      function calBreak(M) {                    // تفصيل أيام التقويم: حفظ + جمعات + راحة
+        var first = QT.parseYmd(M.days[0].date), last = QT.parseYmd(M.endDate);
+        var cal = Math.round((last - first) / 86400000) + 1, fri = M.fridays.length, work = M.totalDays;
+        return work + " يوم حفظ + " + fri + " جمعة + " + Math.max(0, cal - work - fri) + " يوم راحة = " + cal + " يومًا بالتقويم";
+      }
       function kv(a, b) { return '<div class="kv"><span>' + a + '</span><strong>' + b + '</strong></div>'; }
 
       function openSheet(date, edit) {
@@ -188,6 +237,11 @@
         ev = ev || window.event; var t = ev.target || ev.srcElement;
         var rd = t.getAttribute && t.getAttribute("data-rep");
         if (rd) { openSheet(rd, t.getAttribute("data-edit") === "1"); return; }
+        var cd = t.getAttribute && t.getAttribute("data-cancel");
+        if (cd) {
+          if (!window.confirm("إلغاء تقرير هذا اليوم؟ سيذهب لقائمة «تقارير لم تُملأ» وتقدر تملأه من جديد (التقرير القديم يبقى محفوظًا في السجل).")) return;
+          QT.cancelReport(cd); QT.toast("تم إلغاء التقرير — اليوم الآن في «تقارير لم تُملأ»", "ok2"); draw(); return;
+        }
         while (t && t !== app && !(t.id === "toggleAll" || t.id === "startSave")) t = t.parentNode;
         if (!t || t === app) return;
         if (t.id === "toggleAll") { showAll = !showAll; draw(); }
@@ -200,7 +254,7 @@
       };
       app.addEventListener ? app.addEventListener("click", inner, false) : (app.onclick = inner);
 
-      QT.init(function () { draw(); }, 6000);
+      QT.init(function () { draw(); }, 0, function (ok, changed) { if (changed) draw(); });
     })();
     </script>
 </body>
