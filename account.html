@@ -40,6 +40,9 @@
             <label class="lbl" for="rPin">كلمة السر <small>(4 أرقام أو أكثر — تحتاجها لو دخلت من جهاز آخر)</small></label>
             <div class="pwwrap"><input class="input" id="rPin" type="password" autocomplete="new-password" placeholder="اكتب كلمة السر"><button type="button" aria-label="إظهار كلمة السر">👁</button></div>
 
+            <label class="lbl" for="rStart">📅 متى تبدأ الخطة؟ <small>(أول يوم حفظ — بدونه لن تصلك المهام. يمكنك تغييره لاحقًا من صفحة الخطة)</small></label>
+            <input class="input" id="rStart" type="date">
+
             <label class="lbl" for="rGuardian">رقم ولي الأمر <small>(اختياري — يصله ملخص ما أنجزته كل يوم ليتابع معك)</small></label>
             <input class="input" id="rGuardian" type="tel" inputmode="numeric" maxlength="14" placeholder="اتركه فارغًا لو لا تريد" style="direction:ltr;text-align:right">
 
@@ -117,7 +120,7 @@
       function drawDays() {
         var h = "";
         for (var i = 0; i < DAYS.length; i++) h += '<button type="button" class="daychip' + (restSel[DAYS[i][0]] ? " off" : "") + '" data-d="' + DAYS[i][0] + '">' + DAYS[i][1] + '<small>' + (restSel[DAYS[i][0]] ? "راحة" : "حفظ") + '</small></button>';
-        h += '<div class="daychip fri">الجمعة<small>سورة الكهف + تعويض النواقص (يوم أو كنز أو جديد)</small></div>';
+        h += '<div class="daychip fri">الجمعة<small>سورة الكهف فقط</small></div>';
         $("dayChips").innerHTML = h;
       }
       $("dayChips").onclick = function (ev) {
@@ -131,6 +134,7 @@
       drawDays();
 
       /* مواعيد التذكير */
+      (function () { var t = new Date(); t.setDate(t.getDate() + 1); $("rStart").value = QT.ymd(t); })();     // الافتراضي: غدًا
       var rem = QT.mountReminders($("remBox"), ["18:00"]);
       var remS = QT.mountReminders($("tsBox"), ["06:00"]);
       var remG = QT.mountReminders($("tgBox"), ["06:00"]);
@@ -166,12 +170,14 @@
         if (!okT(ts)) { showErr("regErr", "اختر موعد «مهام اليوم مرسلة إلى الطالب» (إجباري) وتأكد أن كل المواعيد مكتملة."); return; }
         if (g && !okT(tg)) { showErr("regErr", "اختر موعد «مهام اليوم مرسلة إلى ولي الأمر» (إجباري) وتأكد أن كل المواعيد مكتملة."); return; }
         if (!okT(times)) { showErr("regErr", "اختر موعد تذكير ملء التقرير (إجباري) وتأكد أن كل المواعيد مكتملة."); return; }
+        var startV = $("rStart").value;
+        if (!QT.isYmd(startV)) { showErr("regErr", "اختر تاريخ بداية الخطة (مطلوب حتى تصلك مهام اليوم)."); return; }
         if (!$("rConsent").checked) { showErr("regErr", "لازم توافق على استلام الرسائل على واتساب."); return; }
         var restArr = [];
         for (k in restSel) if (restSel.hasOwnProperty(k)) restArr.push(Number(k));
         if (restArr.length > 5) { showErr("regErr", "اترك يومًا واحدًا على الأقل للحفظ."); return; }
         showErr("regErr", ""); lock($("regBtn"), true);
-        QT.register({ name: name, phone: phone, pin: pin, guardian: g, rest: restArr, reminders: times, tasksStudent: ts, tasksGuardian: g ? tg : ["06:00"], consent: true }, function (ok, data) {
+        QT.register({ name: name, phone: phone, pin: pin, guardian: g, rest: restArr, start: startV, reminders: times, tasksStudent: ts, tasksGuardian: g ? tg : ["06:00"], consent: true }, function (ok, data) {
           if (ok) { window.location.replace("onboarding.html"); return; }
           lock($("regBtn"), false, "✅ إنشاء الحساب والبدء"); showErr("regErr", data && data.error || "حدث خطأ.");
         });

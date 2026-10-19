@@ -52,17 +52,9 @@
         if (d.t) h += '<div class="sec t"><h3>💎 الكنز</h3><div class="line">' + esc(QT.tSummary(d)) + '</div>' + segList(d) + '</div>';
         if (d.nw) h += '<div class="sec n"><h3>📖 الجديد</h3><div class="line">' + esc(QT.nSummary(d)) + '</div><div class="line muted">ربع ' + d.nw.q + ' · المطلوب من آية ' + d.nw.from + ' إلى ' + d.nw.to + '</div></div>';
         if (d.fx) h += '<div class="sec f"><h3>🔄 التثبيت</h3><div class="line">' + esc(QT.fSummary(d)) + ' · ربع ' + d.fx.qs.join(" + ربع ") + '</div></div>';
-        if (d.status === "compensated") h += '<div class="ok-msg">✅ تم تعويض هذا اليوم يوم الجمعة (' + QT.shortDate(d.comp.date) + ')</div>';
-        // ملاحظات التعويض
+
         var notes = '';
-        if (M) {
-          var all = M.tDef.concat(M.nDef);
-          for (var i = 0; i < all.length; i++) {
-            if (all[i].date === d.date && all[i].comps && all[i].comps.length) {
-              notes += '<div class="note-comp">✔ تم تعويض ' + (all[i].kind === "t" ? "جزء من الكنز" : "جزء من الجديد") + ' يوم ' + QT.shortDate(all[i].comps[all[i].comps.length - 1].date) + (all[i].rem > 0 ? ' (بقي ' + (all[i].kind === "t" ? QT.fmtU(all[i].rem) + ' ربع' : all[i].rem + ' آية') + ')' : ' — تم بالكامل') + '</div>';
-            }
-          }
-        }
+        if (d.t && (d.t.st === 'partial' || d.t.st === 'none') || d.nw && (d.nw.st === 'partial' || d.nw.st === 'none')) notes = '<div class="note-comp" style="color:#a8590b">↪️ ما لم يُنجَز اليوم رُحِّل لليوم التالي.</div>';
         return h + notes;
       }
       function segList(d) {

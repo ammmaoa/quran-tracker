@@ -55,8 +55,8 @@
         if (d.isFriday) {
           $("hTitle").innerHTML = "يوم الجمعة 🕌";
           app.innerHTML = '<section class="box f">' + head("🕌", "سورة الكهف", "قراءة أو تسميع") +
-            '<div class="item">اقرأ سورة الكهف، وعوّض ما فاتك هذا الأسبوع من أيام أو كنز أو جديد.</div>' +
-            '<a class="send" style="display:block;text-align:center;text-decoration:none" href="report.html?d=' + date + '">🕌 تقرير الجمعة والتعويض</a></section>' + nav(date);
+            '<div class="item">اقرأ سورة الكهف أو سمّعها اليوم.</div>' +
+            '<a class="send" style="display:block;text-align:center;text-decoration:none" href="report.html?d=' + date + '">🕌 تقرير الجمعة</a></section>' + nav(date);
           return;
         }
         $("hTitle").innerHTML = "اليوم " + d.n;

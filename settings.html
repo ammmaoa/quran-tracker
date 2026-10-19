@@ -122,7 +122,7 @@
       function drawDays() {
         var h = "";
         for (var i = 0; i < DAYS.length; i++) h += '<button type="button" class="daychip' + (restSel[DAYS[i][0]] ? " off" : "") + '" data-d="' + DAYS[i][0] + '">' + DAYS[i][1] + '<small>' + (restSel[DAYS[i][0]] ? "راحة" : "حفظ") + '</small></button>';
-        h += '<div class="daychip fri">الجمعة<small>سورة الكهف + تعويض النواقص (يوم أو كنز أو جديد)</small></div>';
+        h += '<div class="daychip fri">الجمعة<small>سورة الكهف فقط</small></div>';
         $("restChips").innerHTML = h;
       }
       $("restChips").onclick = function (ev) {

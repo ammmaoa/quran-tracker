@@ -47,7 +47,7 @@
       var app = $("app"), esc = QT.esc, M = null, showAll = false;
 
       function badge(st) {
-        var m = { done: ["ok", "✅ مكتمل"], compensated: ["ok", "✅ مكتمل (معوَّض)"], missed: ["bad", "⚠️ ناقص"], today: ["blue", "📍 اليوم"], future: ["", "قادم"] };
+        var m = { done: ["ok", "✅ مكتمل"], compensated: ["ok", "✅ مكتمل"], missed: ["bad", "📝 لم يُملأ"], today: ["blue", "📍 اليوم"], future: ["", "قادم"] };
         var x = m[st] || ["", st];
         return '<span class="badge ' + x[0] + '">' + x[1] + '</span>';
       }
@@ -66,40 +66,22 @@
         }
         return h;
       }
-      var defMap = {};                         // التاريخ -> النواقص المفتوحة {t, n}
-      function buildDefs() {
-        defMap = {};
-        for (var i = 0; i < M.tDefOpen.length; i++) { var a = M.tDefOpen[i]; (defMap[a.date] = defMap[a.date] || {}).t = a; }
-        for (var j = 0; j < M.nDefOpen.length; j++) { var c = M.nDefOpen[j]; (defMap[c.date] = defMap[c.date] || {}).n = c; }
-      }
-      function missingText(df) {                // ما الناقص بالضبط
-        var parts = [];
-        if (df.n) parts.push("الجديد: ناقص " + df.n.rem + " آية (من " + df.n.curFrom + " إلى " + df.n.to + ")");
-        if (df.t) parts.push("الكنز: ناقص " + QT.fmtU(df.t.rem) + " ربع");
-        return parts;
-      }
       function dayRow(d, kind) {
         if (d.isFriday) {
-          return '<div class="dayline"><div class="meta"><div class="title">🕌 الجمعة — ' + QT.prettyDate(d.date) + '</div><div class="sub">سورة الكهف + تعويض النواقص</div></div>' +
+          return '<div class="dayline"><div class="meta"><div class="title">🕌 الجمعة — ' + QT.prettyDate(d.date) + '</div><div class="sub">سورة الكهف فقط</div></div>' +
                  '<button type="button" class="btn small gray" data-rep="' + d.date + '">فتح</button></div>';
         }
         var cls = d.status === "today" ? " today" : "", btns = '', note = '', bd = badge(d.status);
         if (kind === "pending") {                                   // تقرير لم يُملأ
           cls = " pendingrep"; bd = '<span class="badge bad">📝 تقرير لم يُملأ</span>';
           btns = '<button type="button" class="btn small" data-rep="' + d.date + '">📝 املأ التقرير</button>';
-        } else if (kind === "incomplete") {                         // ناقص: حسب نوع النقص
-          var df = defMap[d.date] || {}, mt = missingText(df);
-          cls = df.t && df.n ? " miss-b" : (df.n ? " miss-n" : " miss-t");
-          bd = '<span class="badge bad">⚠️ ناقص ' + (df.t && df.n ? "الجديد والكنز" : (df.n ? "الجديد فقط" : "الكنز فقط")) + '</span>';
-          note = '<div class="sub miss">' + esc(mt.join(" — ")) + '</div>';
-          btns = '<button type="button" class="btn small blue" data-rep="' + d.date + '" data-edit="1">↩️ إعادة فتح لإكمال النواقص</button>' +
-                 '<button type="button" class="btn small red" data-cancel="' + d.date + '">🚫 إلغاء التقرير</button>';
         } else if (kind === "done") {                               // مكتمل
           cls = " donecard";
           btns = '<button type="button" class="btn small blue" data-rep="' + d.date + '" data-edit="1">↩️ إعادة فتح</button>' +
                  '<button type="button" class="btn small red" data-cancel="' + d.date + '">🚫 إلغاء التقرير</button>';
           var hist = d.report && d.report.hist && d.report.hist.length ? '<div class="sub">🕘 تم تعديل هذا التقرير ' + d.report.hist.length + ' مرة (السجل السابق محفوظ)</div>' : '';
-          note = hist;
+          var part = (d.t && (d.t.st === "partial" || d.t.st === "none")) || (d.nw && (d.nw.st === "partial" || d.nw.st === "none"));
+          note = (part ? '<div class="sub">↪️ ما لم يُنجَز في هذا اليوم رُحِّل لليوم التالي (زادت مدة الخطة بقدره)</div>' : '') + hist;
         } else if (d.status === "today") {
           btns = '<button type="button" class="btn small" data-rep="' + d.date + '">📝 تقرير اليوم</button>';
         }
@@ -125,24 +107,20 @@
           kv("💎 مدة الكنز الحالية", M.treasureDays + " يوم") +
           kv("📖 مدة الجديد الحالية", M.newDays + " يوم") +
           kv("✅ الأيام المكتملة", M.doneDays + " (" + pct + "%)") +
-          kv("⚠️ الأيام الناقصة", M.missedDays.length) +
-          kv("💎 الكنز الناقص", M.tDefTotal ? QT.fmtU(M.tDefTotal) + " ربع" : "0") +
-          kv("📖 الجديد الناقص", M.nDefTotal + " آية") +
+          kv("📝 تقارير لم تُملأ", M.missedDays.length) +
           '<div class="progress-bar"><div class="bar-fill" style="width:' + pct + '%"></div></div>' +
           '<div class="row" style="margin-top:10px"><input type="date" id="startInput" class="input" style="max-width:200px" value="' + st.start + '">' +
           '<button id="startSave" class="btn small blue">🔁 تغيير تاريخ البداية</button></div>' +
           '<p class="muted">تغيير التاريخ يغيّر البداية فقط، والنظام يعيد حساب الأيام منها.</p></div>';
 
         /* الأيام القادمة */
-        buildDefs();
-        var upcoming = [], done = [], pending = [], incomplete = [];
+        var upcoming = [], done = [], pending = [];
         for (i = 0; i < M.days.length; i++) {
           var d = M.days[i];
           if (d.isFriday) { if (d.date >= today) upcoming.push(d); continue; }
           if (d.status === "today" || d.status === "future") { upcoming.push(d); continue; }
           if (d.mode === "miss") { pending.push(d); continue; }                       // مضى اليوم بلا تقرير (أو أُلغي تقريره)
-          if (defMap[d.date]) incomplete.push(d);                                     // له تقرير لكن فيه نقص
-          else done.push(d);                                                          // مكتمل
+          done.push(d);                                                               // له تقرير (مكتمل)
         }
         h += '<div class="card"><h2>📍 الأيام الحالية والقادمة</h2>';
         var lim = showAll ? upcoming.length : Math.min(upcoming.length, 7);
@@ -156,15 +134,6 @@
         if (!pending.length) h += '<p class="muted">لا توجد تقارير ناقصة، أحسنت 👏</p>';
         for (i = 0; i < pending.length; i++) h += dayRow(pending[i], "pending");
         h += '</div></details>';
-
-        /* أيام ناقصة (لها تقرير وفيها نقص) */
-        h += '<details class="acc"' + (incomplete.length ? " open" : "") + '><summary>⚠️ أيام ناقصة (' + incomplete.length + ')</summary><div class="body">';
-        if (!incomplete.length) h += '<p class="muted">لا توجد أيام ناقصة 👏</p>';
-        for (i = 0; i < incomplete.length; i++) h += dayRow(incomplete[i], "incomplete");
-        h += '</div></details>';
-
-        /* الأيام الناقصة والتعويض */
-        h += '<details class="acc"' + (M.missedDays.length || M.tDefOpen.length || M.nDefOpen.length ? " open" : "") + '><summary>⚠️ الناقص والتعويض (الجمعة)</summary><div class="body" id="compBox"></div></details>';
 
         /* المكتملة */
         h += '<details class="acc"><summary>✅ الأيام المكتملة (' + done.length + ')</summary><div class="body">';
@@ -207,7 +176,6 @@
         h += '</div></details>';
 
         app.innerHTML = h;
-        QT.renderComp($("compBox"), M, QT.dowOf(today) === 5, draw);
       }
       function calBreak(M) {                    // تفصيل أيام التقويم: حفظ + جمعات + راحة
         var first = QT.parseYmd(M.days[0].date), last = QT.parseYmd(M.endDate);

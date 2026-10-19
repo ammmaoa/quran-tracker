@@ -79,7 +79,7 @@
     } else if (!d) {
       el.innerHTML = "اكتملت الخطة 🎉"; ds.innerHTML = "ما شاء الله، أتممت الخطة";
     } else if (d.isFriday) {
-      el.innerHTML = "يوم الجمعة 🕌"; ds.innerHTML = "سورة الكهف + تعويض النواقص (اختياري)";
+      el.innerHTML = "يوم الجمعة 🕌"; ds.innerHTML = "سورة الكهف فقط";
       $("todayTasks").innerHTML = "";
     } else {
       el.innerHTML = "اليوم " + d.n + " من " + M.totalDays;

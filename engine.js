@@ -248,6 +248,17 @@ var SLOTS=[
   function getRestArr() { var o = []; for (var k in REST) if (REST.hasOwnProperty(k)) o.push(Number(k)); o.sort(function (a, b) { return a - b; }); return o; }
   function isRest(s) { return !!REST[parseYmd(s).getDay()]; }
 
+  // وحدات الجديد: كل ربع من يومين (الأول والثاني) وتراكم أحجامها، لمعرفة هل المشترك متأخر أم متقدم عن الخطة
+  var PM = [0];
+  (function () {
+    for (var i = 0; i < MAIDA.length; i++) {
+      var q = MAIDA[i];
+      PM.push(PM[PM.length - 1] + (q.mid - q.s + 1));
+      if (q.e > q.mid) PM.push(PM[PM.length - 1] + (q.e - q.mid));
+    }
+  })();
+  function cumM(n) { return PM[Math.min(n, PM.length - 1)]; }
+
   var DAYNAMES = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
   var MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 
@@ -731,6 +742,7 @@ var SLOTS=[
     }
 
     var C = 0;                 // مؤشر الكنز (بالأجزاء)
+    var tDays = 0, nDays = 0;  // عدد أيام الكنز والجديد التي مرّت (لمعرفة التأخر أو التقدم عن الخطة)
     var V = 0, nq = 0, ph = "A", newDone = false;     // مؤشر الجديد
     var qFinish = {};          // رقم الربع -> { n, def }
     var lastRev = {};          // رقم الربع -> رقم آخر يوم تثبيت
@@ -759,31 +771,37 @@ var SLOTS=[
       var mode = rep ? "rep" : (date < today ? "miss" : "proj");
       var day = { n: n, date: date, isFriday: false, report: rep, mode: mode, t: null, nw: null, fx: null };
 
-      /* ---- الكنز ---- */
+      /* ---- الكنز: ربعان كل يوم. ما لم يُنجَز يُرحَّل لليوم التالي (تزيد مدة الخطة)، وما زاد يقلّل المطلوب ---- */
       if (C < TOTAL12) {
-        var req = Math.min(DAY12 - (C % DAY12), TOTAL12 - C);
+        var slackT = C - DAY12 * tDays;                                   // سالب = متأخر عن الخطة ، غير سالب = في الموعد أو متقدم
+        var req = (slackT < 0) ? DAY12 : (DAY12 - (C % DAY12));
+        req = Math.min(req, TOTAL12 - C);
         var T = { from: C, req: req, to: C + req, extra: 0, def: null, st: "full" };
         var tst = mode === "rep" ? ((rep.t && rep.t.st) || "full") : (mode === "miss" ? "none" : "full");
         var tam = (mode === "rep" && rep.t) ? (rep.t.amt || 0) : 0;
         if (tst === "partial" && (tam <= 0)) tst = "none";
         if (tst === "partial" && tam >= req) tst = "full";
         if (tst === "extra" && tam <= 0) tst = "full";
-        if (tst === "none") T.def = makeDef("t", "t" + date, n, date, C, C + req);
-        else if (tst === "partial") T.def = makeDef("t", "t" + date, n, date, C + tam, C + req);
-        else if (tst === "extra") T.extra = Math.min(tam, TOTAL12 - (C + req));
+        var adv = req;
+        if (tst === "none") adv = 0;
+        else if (tst === "partial") adv = tam;
+        else if (tst === "extra") { T.extra = Math.min(tam, TOTAL12 - (C + req)); adv = req + T.extra; }
         T.st = tst; T.am = tam;
         T.segs = segsOf(C, C + req);
-        if (T.def) M.tDef.push(T.def);
-        C = C + req + T.extra;
+        C = C + adv;
+        tDays++;
         day.t = T;
       }
 
-      /* ---- الجديد ---- */
+      /* ---- الجديد (بالآيات): نفس القاعدة — الباقي يُرحَّل ويكمل الربع، ولا يُقطع جزء ويُرمى في الجمعة ---- */
       normNew();
       if (!newDone) {
         var Q = MAIDA[nq];
-        if (ph === "A" && V >= Q.mid) ph = "B";
-        var rf = V + 1, rt = (ph === "A") ? Q.mid : Q.e;
+        var inA = (V + 1 <= Q.mid);
+        var uend = inA ? Q.mid : Q.e, usize = inA ? (Q.mid - Q.s + 1) : (Q.e - Q.mid);
+        var aheadN = (V >= cumM(nDays));                                  // في الموعد أو متقدم؟
+        ph = inA ? "A" : "B";
+        var rf = V + 1, rt = aheadN ? uend : Math.min(V + usize, Q.e);
         var Nw = { q: Q.q, ph: ph, from: rf, to: rt, cnt: rt - rf + 1, st: "full", def: null, qi: Q, newV: V, to2: null };
         var nst = mode === "rep" ? ((rep.nw && rep.nw.st) || "full") : (mode === "miss" ? "none" : "full");
         var nto = (mode === "rep" && rep.nw && rep.nw.to !== undefined && rep.nw.to !== null && rep.nw.to !== "") ? Number(rep.nw.to) : null;
@@ -800,23 +818,10 @@ var SLOTS=[
           if (newV > 120) newV = 120;
         }
         Nw.st = nst; Nw.to2 = newV;
-        var def2 = null;
-        if (ph === "A") {
-          V = newV; ph = "B";
-        } else {
-          if (newV < Q.e) {
-            def2 = makeDef("n", "n" + date, n, date, newV + 1, Q.e, { q: Q.q });
-            M.nDef.push(def2);
-            V = Q.e;
-          } else V = newV;
-          ph = "A";
-        }
-        Nw.def = def2;
+        V = newV; nDays++;
         // تسجيل الأرباع التي انتهى حفظها
         for (var qi = 0; qi < 9; qi++) {
-          if (V >= MAIDA[qi].e && !qFinish[MAIDA[qi].q]) {
-            qFinish[MAIDA[qi].q] = { n: n, def: (def2 && def2.q === MAIDA[qi].q) ? def2 : null };
-          }
+          if (V >= MAIDA[qi].e && !qFinish[MAIDA[qi].q]) qFinish[MAIDA[qi].q] = { n: n, def: null };
         }
         day.nw = Nw;
       }
@@ -1504,12 +1509,9 @@ QT.openReport = function (app, date, hooks) {
         var h = '<section class="box f">' + head("🕌", "سورة الكهف", "قراءة أو تسميع — لا تدخل في الخطة ولا تُحسب نقصًا") +
           '<div class="opts two"><button type="button" class="opt full' + (sel === "done" ? " sel" : "") + '" data-k="done"><span>✅</span>تم</button>' +
           '<button type="button" class="opt none' + (sel === "none" ? " sel" : "") + '" data-k="none"><span>❌</span>لم يتم</button></div></section>' +
-          '<details class="acc"><summary>🧩 تعويض النواقص (اختياري)</summary><div class="body" id="compBox"></div></details>' +
           '<div class="dock"><button type="button" id="kSend" class="send">📤 تسجيل تقرير اليوم</button></div>' + navBar();
         app.innerHTML = h;
         var chosen = sel;
-        function refreshComp() { M = QT.compute(QT.getState(), QT.todayStr()); QT.renderComp($("compBox"), M, QT.dowOf(QT.todayStr()) === 5, refreshComp); }
-        refreshComp();
         app.onclick = function (ev) {
           ev = ev || window.event; var t = ev.target || ev.srcElement;
           while (t && t !== app && !(t.getAttribute && (t.getAttribute("data-k") || t.id === "kSend"))) t = t.parentNode;
