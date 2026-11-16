@@ -264,8 +264,8 @@ var SLOTS=[
   })();
   function cumM(n) { return PM[Math.min(n, PM.length - 1)]; }
 
-  // «خطة الجديد للترم الأول»: 25 يومًا من سورة المائدة (الآيات 1–65)
-  var NEWPLAN = [[1,2],[3,4],[5,6],[7,9],[10,11],[12,13],[14,15],[16,17],[18,20],[21,23],[24,27],[28,31],[32,33],[34,36],[37,40],[41,41],[42,43],[44,45],[46,47],[48,50],[51,53],[54,57],[58,61],[62,64],[65,65]];
+  // «خطة الجديد للترم الأول»: 25 يومًا من سورة المائدة (الآيات 1–66)
+  var NEWPLAN = [[1,2],[3,4],[5,6],[7,9],[10,11],[12,13],[14,15],[16,17],[18,20],[21,23],[24,27],[28,31],[32,33],[34,36],[37,40],[41,41],[42,43],[44,45],[46,47],[48,50],[51,53],[54,57],[58,61],[62,64],[65,66]];
   var NU = [], CNU = [0];
   (function () {
     for (var i = 0; i < NEWPLAN.length; i++) {
@@ -273,7 +273,7 @@ var SLOTS=[
       CNU.push(CNU[CNU.length - 1] + NU[i].size);
     }
   })();
-  var NEW_LAST = NU[NU.length - 1].e;                           // 65
+  var NEW_LAST = NU[NU.length - 1].e;                           // 66
   function cumNU(n) { return CNU[Math.min(n, NU.length)]; }
   function unitsCovered(v) { var c = 0; for (var i = 0; i < NU.length; i++) { if (NU[i].e <= v) c++; else break; } return c; }
   function unitAt(v) { for (var i = 0; i < NU.length; i++) if (NU[i].e >= v) return NU[i]; return null; }
@@ -477,8 +477,8 @@ var SLOTS=[
 
   function merge(a, b) {            // دمج حالتين: الأحدث يفوز لكل عنصر
     var out = emptyState(), k;
-    if ((b.settingsAt || 0) > (a.settingsAt || 0)) { out.start = b.start || ""; out.settingsAt = b.settingsAt || 0; }
-    else { out.start = a.start || ""; out.settingsAt = a.settingsAt || 0; }
+    if ((b.settingsAt || 0) > (a.settingsAt || 0)) { out.start = b.start || ""; out.settingsAt = b.settingsAt || 0; if (b.base) out.base = b.base; if (b.prevStart) out.prevStart = b.prevStart; }
+    else { out.start = a.start || ""; out.settingsAt = a.settingsAt || 0; if (a.base) out.base = a.base; if (a.prevStart) out.prevStart = a.prevStart; }
     var sets = [["reports", "at"], ["kahf", "at"]];
     for (var i = 0; i < sets.length; i++) {
       var nm = sets[i][0];
@@ -734,6 +734,13 @@ var SLOTS=[
     state.start = d; state.settingsAt = new Date().getTime();
     commit(null, null);
   }
+  // نقطة الانطلاق: c = عدد أرباع الكنز التي أنهاها، v = آخر آية حفظها من المائدة، d = أيام الخطة القديمة التي عملها، from = أول يوم في الخطة الجديدة
+  function setBase(c, v, d, from) {
+    state.base = { c: c, v: v, d: d, at: new Date().getTime() };
+    if (!state.prevStart && state.start && state.start !== from) state.prevStart = state.start;
+    state.start = from; state.settingsAt = new Date().getTime();
+    commit(null, null);
+  }
   function reportOf(st, date) { var r = st && st.reports ? st.reports[date] : null; return (r && !r.cancelled) ? r : null; }
   // يضيف سجل التقرير السابق (لو كان اليوم مُرسلًا من قبل) إلى التقرير الجديد حتى لا يضيع الإنجاز السابق
   function withHistory(date, rep) {
@@ -813,6 +820,17 @@ var SLOTS=[
     var newStart = isYmd(QT_CONFIG.NEW_PLAN_START) ? QT_CONFIG.NEW_PLAN_START : "";
     var newMode = false, nDaysNew = 0, unitDone = {}, lastRevP = {};
     var date = st.start, n = 0, guard = 0;
+    /* نقطة الانطلاق (يحدّدها المشترك): كم ربعًا أنهى في الكنز، وآخر آية حفظها في الجديد، وكم يومًا عمل بالخطة القديمة.
+       تبدأ الحسابات منها مباشرة (فلا تكرار لمحفوظ ولا تخمين)، وترقيم الأيام يكمل من عدد أيامه القديمة. التقارير القديمة تبقى محفوظة كما هي. */
+    var B = (st.base && typeof st.base === "object") ? st.base : null;
+    if (B) {
+      C = Math.max(0, Math.min(TOTAL12, Math.round((Number(B.c) || 0) * 12)));
+      tDays = Math.floor(C / DAY12);
+      V = Math.max(0, Math.min(120, Math.round(Number(B.v) || 0)));
+      n = Math.max(0, Math.round(Number(B.d) || 0));
+      while (nDays + 1 < PM.length && cumM(nDays + 1) <= V) nDays++;
+      for (var bq = 0; bq < 9; bq++) if (V >= MAIDA[bq].e) qFinish[MAIDA[bq].q] = { n: -1000 + bq, def: null };
+    }
 
     function normNew() {
       if (newDone) return;
@@ -1329,7 +1347,7 @@ var SLOTS=[
     isRest: isRest, fmtU: fmtU, fmtRaw: fmtRaw, parseU: parseU, normDigits: normDigits,
     NEW_LAST_FOR: function (nw) { return nw && nw.plan ? NEW_LAST : 120; },
     fxItems: fxItems, fxText: fxText, NU: NU, NEW_LAST: NEW_LAST, unitInfo: unitInfo, segsOf: segsOf, segLabel: segLabel, segFull: segFull, partText: partText,
-    init: init, pull: pull, push: push, getState: getState, setStart: setStart, putReport: putReport, putKahf: putKahf, addComp: addComp,
+    init: init, pull: pull, push: push, getState: getState, setStart: setStart, setBase: setBase, putReport: putReport, putKahf: putKahf, addComp: addComp,
     emptyState: emptyState, merge: merge, hasServer: hasServer,
     compute: compute, dayFor: dayFor, streak: streak, surahTimeline: surahTimeline,
     ST_AR: ST_AR, ST_ICON: ST_ICON, tSummary: tSummary, nSummary: nSummary, fSummary: fSummary,
