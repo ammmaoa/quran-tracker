@@ -33,6 +33,25 @@
             </div>
         </section>
 
+        <section id="baseBox" class="card" style="display:none">
+            <h2>📍 وين وصلت؟ (قبل ما نبدأ الخطة الجديدة)</h2>
+            <p class="muted">عشان الخطة تبدأ من مكانك الصحيح بدون تكرار حاجة محفوظة، جاوب على السؤالين:</p>
+            <label class="muted" for="baseC">1) في الكنز: كم ربعًا أنهيت بالكامل؟ (0 لو لم تبدأ)</label>
+            <input type="number" id="baseC" class="input" min="0" max="180" inputmode="numeric" placeholder="مثلًا 8" style="max-width:220px">
+            <div id="baseCInfo" class="muted" style="margin:4px 0 10px"></div>
+            <label class="muted" for="baseV">2) في الجديد (سورة المائدة): آخر آية حفظتها؟ (0 لو لم تبدأ)</label>
+            <input type="number" id="baseV" class="input" min="0" max="120" inputmode="numeric" placeholder="مثلًا 12" style="max-width:220px">
+            <div id="baseVInfo" class="muted" style="margin:4px 0 10px"></div>
+            <label class="muted" for="baseD">3) كم يومًا عملت بالخطة القديمة؟ (لترقيم أيامك)</label>
+            <input type="number" id="baseD" class="input" min="0" max="400" inputmode="numeric" style="max-width:220px">
+            <div style="height:10px"></div>
+            <label class="muted" for="baseFrom">4) أول يوم تبدأ فيه الخطة الجديدة</label>
+            <input type="date" id="baseFrom" class="input" style="max-width:220px">
+            <div class="row" style="margin-top:12px"><button id="baseSave" class="btn">💾 حفظ وبدء الخطة الجديدة</button></div>
+            <p class="muted" style="margin-top:8px">تقاريرك القديمة تبقى محفوظة كما هي. تقدر تعدّل هذه الإجابات في أي وقت من زر «تعديل مكاني».</p>
+        </section>
+        <div id="baseEditRow" style="display:none;margin:0 0 10px"><button id="baseEdit" class="btn small gold">📍 تعديل مكاني في الخطة</button></div>
+
         <section class="day-section">
             <div>
                 <div class="small-title">اليوم</div>

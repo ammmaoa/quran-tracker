@@ -56,7 +56,8 @@
 
   function render() {
     var st = QT.getState();
-    $("startBox").style.display = st.start ? "none" : "block";
+    renderBase(st);
+    $("startBox").style.display = (st.start || (npStart() && !st.base)) ? "none" : "block";
     if (!st.start) {
       var t = QT.addDays(QT.todayStr(), 1);
       if (!$("startInput").value) $("startInput").value = t;
@@ -103,6 +104,47 @@
     $("reportLink").href = "report.html?d=" + today;
     $("tasksLink").href = "today.html?d=" + today;
   }
+
+  /* ---------- نقطة الانطلاق (وين وصلت؟) ---------- */
+  var baseEditing = false;
+  function npStart() { return QT.isYmd(QT_CONFIG.NEW_PLAN_START) ? QT_CONFIG.NEW_PLAN_START : ""; }
+  function countOldReports(st) { var k, n = 0; for (k in (st.reports || {})) if (st.reports.hasOwnProperty(k) && !st.reports[k].cancelled) n++; return n; }
+  function baseInfo() {
+    var c = parseInt($("baseC").value, 10), v = parseInt($("baseV").value, 10), a = "", b = "", i;
+    if (!isNaN(c) && c >= 0 && c <= 180) a = c >= 180 ? "أنهيت كل الكنز 🎉" : "ستبدأ من الربع رقم " + (c + 1) + ": " + QT.unitInfo(c + 1).title;
+    if (!isNaN(v) && v >= 0 && v <= 120) {
+      if (v >= QT.NEW_LAST) b = "أنهيت الجديد المطلوب في الترم الأول 🎉";
+      else {
+        var day = 0; for (i = 0; i < QT.NU.length; i++) { if (QT.NU[i].e <= v) day++; else break; }
+        b = "ستكمل من الآية " + (v + 1) + " — الأيام المتبقية في الخطة الجديدة: " + (QT.NU.length - day) + " يومًا";
+      }
+    }
+    $("baseCInfo").innerHTML = QT.esc(a); $("baseVInfo").innerHTML = QT.esc(b);
+  }
+  function renderBase(st) {
+    var np = npStart(), need = !!np && !st.base, show = need || (baseEditing && !!np);
+    $("baseBox").style.display = show ? "block" : "none";
+    $("baseEditRow").style.display = (!!np && !!st.base && !baseEditing) ? "block" : "none";
+    if (show && !$("baseBox").getAttribute("data-init")) {
+      $("baseBox").setAttribute("data-init", "1");
+      var b = st.base || {}, today = QT.todayStr(), from = np > today ? np : today;
+      $("baseC").value = b.c !== undefined ? b.c : ""; $("baseV").value = b.v !== undefined ? b.v : "";
+      $("baseD").value = b.d !== undefined ? b.d : countOldReports(st); $("baseFrom").value = st.base && st.start ? st.start : from;
+      $("baseFrom").min = np; baseInfo();
+    }
+  }
+  $("baseC").oninput = baseInfo; $("baseV").oninput = baseInfo;
+  $("baseEdit").onclick = function () { baseEditing = true; $("baseBox").removeAttribute("data-init"); renderBase(QT.getState()); $("baseBox").scrollIntoView(); };
+  $("baseSave").onclick = function () {
+    var c = parseInt($("baseC").value, 10), v = parseInt($("baseV").value, 10), d = parseInt($("baseD").value, 10), f = $("baseFrom").value, np = npStart();
+    if (isNaN(c) || c < 0 || c > 180) { QT.toast("اكتب عدد الأرباع التي أنهيتها في الكنز (من 0 إلى 180)", "err2"); return; }
+    if (isNaN(v) || v < 0 || v > 120) { QT.toast("اكتب آخر آية حفظتها في الجديد (0 لو لم تبدأ)", "err2"); return; }
+    if (isNaN(d) || d < 0) d = 0;
+    if (!QT.isYmd(f)) { QT.toast("اختر تاريخ أول يوم", "err2"); return; }
+    if (np && f < np) { f = np; }
+    QT.setBase(c, v, d, f); baseEditing = false; $("baseBox").removeAttribute("data-init");
+    render(); QT.toast("تم الحفظ ✅ — الخطة الجديدة تبدأ من مكانك", "ok2");
+  };
 
   $("startSave").onclick = function () {
     var v = $("startInput").value;

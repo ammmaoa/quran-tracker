@@ -49,6 +49,7 @@
         if (!QT.isYmd(date)) date = QT.todayStr();
         $("hSub").innerHTML = QT.prettyDate(date);
         if (!st.start) { $("hTitle").innerHTML = "مهام اليوم"; msg("📅 حدّد تاريخ بداية الخطة أولًا", "افتح الصفحة الرئيسية واختر تاريخ البداية.", date); return; }
+        if (QT.isYmd(QT_CONFIG.NEW_PLAN_START) && date >= QT_CONFIG.NEW_PLAN_START && !st.base) { $("hTitle").innerHTML = "مهام اليوم"; msg("📍 حدّد وين وصلت أولًا", "افتح الصفحة الرئيسية وجاوب: كم ربعًا أنهيت في الكنز؟ وآخر آية حفظتها في الجديد؟ وبعدها تظهر مهامك الصحيحة.", date); return; }
         var M = QT.compute(st, QT.todayStr()), d = M.byDate[date];
         if (QT.isRest(date)) { $("hTitle").innerHTML = "يوم راحة 🌿"; msg("🌿 يوم راحة", "لا توجد مهام اليوم. تقبّل الله منك.", date); return; }
         if (date < st.start || !d) { $("hTitle").innerHTML = "مهام اليوم"; msg("لا توجد مهام في هذا التاريخ", "هذا اليوم قبل بداية الخطة أو بعد نهايتها.", date); return; }
