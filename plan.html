@@ -53,7 +53,7 @@
       }
       function dayDetail(d) {
         var h = '', i;
-        if (d.nw) h += '<div class="sub">📖 الجديد: من آية ' + d.nw.from + ' إلى ' + d.nw.to + ' (ربع ' + d.nw.q + ' — «' + esc(d.nw.qi.ph.split(" ").slice(0, 4).join(" ")) + '»)' + (d.mode === "rep" ? ' — ' + esc(QT.nSummary(d)) : '') + '</div>';
+        if (d.nw) h += '<div class="sub">📖 الجديد: من آية ' + d.nw.from + ' إلى ' + d.nw.to + (d.nw.plan ? ' (يوم ' + d.nw.k + ' من 25 في خطة الترم الأول)' : ' (ربع ' + d.nw.q + ' — «' + esc(d.nw.qi.ph.split(" ").slice(0, 4).join(" ")) + '»)') + (d.mode === "rep" ? ' — ' + esc(QT.nSummary(d)) : '') + '</div>';
         if (d.t) {
           var ss = [];
           for (i = 0; i < d.t.segs.length; i++) ss.push(QT.segFull(d.t.segs[i]));
@@ -61,7 +61,7 @@
         }
         if (d.fx) {
           var fs = [];
-          for (i = 0; i < d.fx.qs.length; i++) { var q = QT.MAIDA[d.fx.qs[i] - 1]; fs.push("ربع " + q.q + " (" + q.s + "–" + q.e + " «" + q.ph.split(" ").slice(0, 3).join(" ") + "»)"); }
+          fs.push(QT.fxText(d));
           h += '<div class="sub">🔄 التثبيت: ' + esc(fs.join(" + ")) + (d.mode === "rep" ? ' — ' + esc(QT.fSummary(d)) : '') + '</div>';
         }
         return h;
@@ -142,6 +142,16 @@
         h += '</div></details>';
 
         /* الجديد */
+        if (M.newMode) {
+          h += '<details class="acc"><summary>📖 خطة الجديد للترم الأول — 25 يومًا</summary><div class="body">';
+          for (i = 0; i < QT.NU.length; i++) {
+            var u = QT.NU[i], dd = [];
+            for (var j = 0; j < M.days.length; j++) { var dj = M.days[j]; if (!dj.isFriday && dj.nw && dj.nw.plan && dj.nw.from <= u.e && dj.nw.to >= u.s) dd.push(dj); }
+            h += '<div class="dayline"><div class="meta"><div class="title">اليوم ' + u.k + ' — آيات ' + u.s + '–' + u.e + (M.V >= u.e ? ' <span class="badge ok">تم</span>' : '') + '</div>' +
+                 (dd.length ? '<div class="sub">من اليوم ' + dd[0].n + ' (' + QT.shortDate(dd[0].date) + ') إلى اليوم ' + dd[dd.length - 1].n + ' (' + QT.shortDate(dd[dd.length - 1].date) + ')</div>' : '') + '</div></div>';
+          }
+          h += '</div></details>';
+        } else {
         h += '<details class="acc"><summary>📖 خطة الجديد — سورة المائدة</summary><div class="body">';
         for (i = 0; i < QT.MAIDA.length; i++) {
           var q = QT.MAIDA[i], fin = M.qFinish[q.q], dd = [];
@@ -151,6 +161,7 @@
                (dd.length ? '<div class="sub">من اليوم ' + dd[0].n + ' (' + QT.shortDate(dd[0].date) + ') إلى اليوم ' + dd[dd.length - 1].n + ' (' + QT.shortDate(dd[dd.length - 1].date) + ')</div>' : '') + '</div></div>';
         }
         h += '</div></details>';
+        }
 
         /* الكنز */
         h += '<details class="acc"><summary>💎 خطة الكنز — الأنعام إلى الناس</summary><div class="body"><p class="muted">كل يوم ربعان. الأرقام هنا هي الخطة الحالية بعد احتساب الزيادة والنقصان.</p>';

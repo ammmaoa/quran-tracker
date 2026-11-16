@@ -64,9 +64,14 @@
         h += '<div class="steps"><b>' + (done ? "✅ تم تسجيل تقرير اليوم" : "لم يُسجَّل تقرير اليوم بعد") + '</b></div>';
         if (d.nw) {
           var q = d.nw.qi;
+          if (d.nw.plan) {
+            h += '<section class="box n">' + head("📖", "الجديد", "خطة الجديد للترم الأول · سورة المائدة") +
+                 '<div class="item"><span class="pill g">اليوم ' + d.nw.k + ' من 25</span><span class="name">من آية ' + d.nw.from + ' إلى آية ' + d.nw.to + '</span> <span class="mu">(' + d.nw.cnt + ' آيات)</span></div></section>';
+          } else {
           h += '<section class="box n">' + head("📖", "الجديد", "سورة المائدة · اليوم " + (d.nw.ph === "A" ? "الأول" : "الثاني") + " من الربع") +
                '<div class="item"><span class="pill g">ربع ' + q.q + '</span><span class="name">من آية ' + d.nw.from + ' إلى آية ' + d.nw.to + '</span> <span class="mu">(' + d.nw.cnt + ' آيات)</span>' +
                '<br><span class="mu">الربع يبدأ بـ</span> <span class="ph">«' + esc(q.ph) + '»</span></div></section>';
+          }
         }
         if (d.t) {
           h += '<section class="box t">' + head("💎", "الكنز", "المطلوب اليوم: " + QT.fmtU(d.t.req) + " ربع");
@@ -83,9 +88,9 @@
         }
         if (d.fx) {
           h += '<section class="box f">' + head("🔄", "التثبيت", "مراجعة من المائدة");
-          for (i = 0; i < d.fx.qs.length; i++) {
-            var fq = QT.MAIDA[d.fx.qs[i] - 1];
-            h += '<div class="item"><span class="pill g">ربع ' + fq.q + '</span><span class="name">من آية ' + fq.s + ' إلى ' + fq.e + '</span><br><span class="mu">يبدأ بـ</span> <span class="ph">«' + esc(fq.ph) + '»</span></div>';
+          var fit = QT.fxItems(d);
+          for (i = 0; i < fit.length; i++) {
+            h += '<div class="item"><span class="pill g">' + fit[i].label + '</span><span class="name">من آية ' + fit[i].s + ' إلى ' + fit[i].e + '</span>' + (fit[i].ph ? '<br><span class="mu">يبدأ بـ</span> <span class="ph">«' + esc(fit[i].ph) + '»</span>' : '') + '</div>';
           }
           h += '</section>';
         }

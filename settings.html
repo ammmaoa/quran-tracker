@@ -133,8 +133,12 @@
       };
 
       function save(payload, okMsg, after) {
-        QT.updateProfile(payload, function (ok, res) {
-          if (ok) { QT.toast(okMsg, "ok2"); fill(); if (after) after(); } else QT.toast(String(res), "err2");
+        QT.toast("⏳ جاري الحفظ...", "");
+        QT.updateProfile(payload, function (ok, res, meta) {
+          if (!ok) { QT.toast("❌ لم يُحفظ: " + String(res), "err2"); fill(); return; }
+          fill(); if (after) after();
+          if (meta && meta.pending) QT.toast("⚠️ حُفظ على هذا الجهاز ولم يصل للخادم بعد — سيُعاد إرساله تلقائيًا", "");
+          else QT.toast(okMsg.replace(/ ✅$/, "") + " ✅ (تم التأكد من الخادم)", "ok2");
         });
       }
       $("saveName").onclick = function () {

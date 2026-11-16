@@ -51,7 +51,7 @@
         if (d.status === "today" || d.status === "future") return '<p class="muted">لم يُرسل تقرير هذا اليوم بعد.</p><a class="btn" href="report.html?d=' + d.date + '">📝 املأ التقرير</a>';
         if (d.t) h += '<div class="sec t"><h3>💎 الكنز</h3><div class="line">' + esc(QT.tSummary(d)) + '</div>' + segList(d) + '</div>';
         if (d.nw) h += '<div class="sec n"><h3>📖 الجديد</h3><div class="line">' + esc(QT.nSummary(d)) + '</div><div class="line muted">ربع ' + d.nw.q + ' · المطلوب من آية ' + d.nw.from + ' إلى ' + d.nw.to + '</div></div>';
-        if (d.fx) h += '<div class="sec f"><h3>🔄 التثبيت</h3><div class="line">' + esc(QT.fSummary(d)) + ' · ربع ' + d.fx.qs.join(" + ربع ") + '</div></div>';
+        if (d.fx) h += '<div class="sec f"><h3>🔄 التثبيت</h3><div class="line">' + esc(QT.fSummary(d)) + ' · ' + esc(QT.fxText(d)) + '</div></div>';
 
         var notes = '';
         if (d.t && (d.t.st === 'partial' || d.t.st === 'none') || d.nw && (d.nw.st === 'partial' || d.nw.st === 'none')) notes = '<div class="note-comp" style="color:#a8590b">↪️ ما لم يُنجَز اليوم رُحِّل لليوم التالي.</div>';

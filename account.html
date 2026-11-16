@@ -112,6 +112,7 @@
         $("tabReg").className = "tab" + (which === "reg" ? " on" : "");
         $("tabLogin").className = "tab" + (which === "login" ? " on" : "");
       }
+      try { var lp = window.localStorage.getItem("qt_lastphone"); if (lp) { $("lPhone").value = lp.indexOf("20") === 0 ? "0" + lp.substring(2) : lp; show("login"); } } catch (e) {}
       $("tabReg").onclick = function () { show("reg"); };
       $("tabLogin").onclick = function () { show("login"); };
 

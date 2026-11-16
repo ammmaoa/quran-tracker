@@ -12,6 +12,11 @@ var QT_CONFIG = {
   SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyladtIbtLJUU9M-f25RuOaW9dVaTs2FXQj2D1LnhNYXvkKaOWEpHbaxRQ7rVcf6foCPg/exec",
   // عدد أرباع التثبيت في اليوم (ربعان).
   FIX_PER_DAY: 2,
+  // تاريخ بداية «خطة الجديد للترم الأول» (YYYY-MM-DD). فارغ = لا تزال خطة الأرباع القديمة (لا شيء يتغير).
+  // لو كتبت تاريخًا: الأيام قبله تبقى بالنظام القديم وتقاريرها كما هي، ومنه يحسب النظام لكل مشترك آخر آية حفظها فعلًا ويكمل من بعدها.
+  // مهم: اكتب نفس التاريخ في ملف engine.js على GitHub وفي ملف Engine.gs في Apps Script.
+  NEW_PLAN_START: "",                                  // يُضبط تلقائيًا من الخادم (Code.gs ← NEW_PLAN_START)؛ لا تعدّله هنا
+  VERSION: "final-2",
   // رقم الدعم (يظهر أسفل كل صفحة)
   SUPPORT_PHONE: "201095374757",
   // الرقم الذي ترسل منه الرسائل (رقم واتساب Meta). اكتبه بصيغة دولية بدون +؛ يظهر في شاشة الترحيب ليحفظه المشترك.
@@ -259,6 +264,21 @@ var SLOTS=[
   })();
   function cumM(n) { return PM[Math.min(n, PM.length - 1)]; }
 
+  // «خطة الجديد للترم الأول»: 25 يومًا من سورة المائدة (الآيات 1–65)
+  var NEWPLAN = [[1,2],[3,4],[5,6],[7,9],[10,11],[12,13],[14,15],[16,17],[18,20],[21,23],[24,27],[28,31],[32,33],[34,36],[37,40],[41,41],[42,43],[44,45],[46,47],[48,50],[51,53],[54,57],[58,61],[62,64],[65,65]];
+  var NU = [], CNU = [0];
+  (function () {
+    for (var i = 0; i < NEWPLAN.length; i++) {
+      NU.push({ k: i + 1, s: NEWPLAN[i][0], e: NEWPLAN[i][1], size: NEWPLAN[i][1] - NEWPLAN[i][0] + 1 });
+      CNU.push(CNU[CNU.length - 1] + NU[i].size);
+    }
+  })();
+  var NEW_LAST = NU[NU.length - 1].e;                           // 65
+  function cumNU(n) { return CNU[Math.min(n, NU.length)]; }
+  function unitsCovered(v) { var c = 0; for (var i = 0; i < NU.length; i++) { if (NU[i].e <= v) c++; else break; } return c; }
+  function unitAt(v) { for (var i = 0; i < NU.length; i++) if (NU[i].e >= v) return NU[i]; return null; }
+  function pageSpan(p) { return { s: NU[2 * p - 2].s, e: NU[Math.min(2 * p, NU.length) - 1].e }; }   // «صفحة» = يومان متتاليان من الخطة (نصف صفحة في اليوم)
+
   var DAYNAMES = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
   var MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 
@@ -505,7 +525,8 @@ var SLOTS=[
     var next = /^[A-Za-z]+\.html(\?.*)?$/.test(here) && here.indexOf("account.html") < 0 ? "?next=" + encodeURIComponent(here) : "";
     window.location.replace("account.html" + next);
   }
-  function authFail() { setSession(null); goAccount(); }
+  function rememberPhone() { try { var x = getSession(); if (x && x.phone) window.localStorage.setItem("qt_lastphone", x.phone); } catch (e) {} }
+  function authFail() { rememberPhone(); setSession(null); goAccount(); }
 
   function pull(cb) {
     var ss = getSession();
@@ -513,12 +534,12 @@ var SLOTS=[
     http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify({ action: "get", uid: ss.uid, token: ss.token }), function (ok, data) {
       if (ok && data && data.ok === false && data.error === "auth") { authFail(); return; }
       if (!ok || !data || !data.state) { if (cb) cb(false, false); return; }
-      var restChanged = false;
+      var restChanged = applyConfig(data.config);
       if (data.profile) {
         var oldRest = JSON.stringify(ss.rest || [0, 3]);
         ss.name = data.profile.name; ss.phone = data.profile.phone; ss.guardian = data.profile.guardian; ss.rest = data.profile.rest || [0, 3]; ss.reminders = data.profile.reminders || ["18:00", "22:00"]; ss.tasksStudent = data.profile.tasksStudent || ["06:00"]; ss.tasksGuardian = data.profile.tasksGuardian || ["06:00"];
         setSession(ss); setRest(ss.rest);
-        restChanged = oldRest !== JSON.stringify(ss.rest);
+        restChanged = restChanged || (oldRest !== JSON.stringify(ss.rest));
       }
       var remote = data.state;
       remote.reports = remote.reports || {}; remote.comps = remote.comps || []; remote.kahf = remote.kahf || {};
@@ -544,15 +565,23 @@ var SLOTS=[
   }
   // يعرض الصفحة فورًا من بيانات الجهاز، ثم يحدّث من الخادم في الخلفية.
   // cb: عند الجاهزية (فورًا) ، onSync(ok, changed): بعد المزامنة مع الخادم. بدون حساب يحوّل لصفحة الحساب.
+  function applyConfig(c) {
+    if (!c) return false;
+    var v = c.newPlanStart || "", changed = (QT_CONFIG.NEW_PLAN_START || "") !== v;
+    QT_CONFIG.NEW_PLAN_START = v;
+    try { window.localStorage.setItem("qt_cfg", JSON.stringify(c)); } catch (e) {}
+    return changed;
+  }
   function init(cb, waitMs, onSync) {
     var ss = getSession();
     if (!ss) { goAccount(); return; }
+    try { applyConfig(JSON.parse(window.localStorage.getItem("qt_cfg") || "null")); } catch (e0) {}
     setRest(ss.rest);
     state = loadLocal();
     if (cb) cb(state, false);
     if (!hasServer()) { if (onSync) onSync(false, false); return; }
     pull(function (ok, changed) {
-      flushPending();
+      flushPending(); flushProfile();
       if (onSync) onSync(ok, changed);
     });
   }
@@ -571,7 +600,7 @@ var SLOTS=[
       if (!ok || !data) { cb(false, { error: "تعذر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى." }); return; }
       if (data.ok === false) { cb(false, data); return; }
       setSession({ uid: data.uid, token: data.token, name: data.profile.name, phone: data.profile.phone, guardian: data.profile.guardian, rest: data.profile.rest || [0, 3], reminders: data.profile.reminders || ["18:00", "22:00"], tasksStudent: data.profile.tasksStudent || ["06:00"], tasksGuardian: data.profile.tasksGuardian || ["06:00"] });
-      setRest(data.profile.rest);
+      setRest(data.profile.rest); applyConfig(data.config);
       state = loadLocal();
       if (data.state) { data.state.reports = data.state.reports || {}; data.state.comps = data.state.comps || []; data.state.kahf = data.state.kahf || {}; state = merge(state, data.state); }
       saveLocal();
@@ -580,18 +609,53 @@ var SLOTS=[
   }
   function register(o, cb) { o.action = "register"; authCall(o, cb); }
   function login(o, cb) { o.action = "login"; authCall(o, cb); }
+  var SOFT = ["name", "guardian", "rest", "reminders", "tasksStudent", "tasksGuardian"];   // حقول تُطبَّق فورًا على الجهاز (بدون كلمة سر)
+  function profKey() { var x = getSession(); return "qt_pp_" + (x ? x.uid : "anon"); }
+  function sameVal(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  function getPP() { try { return JSON.parse(window.localStorage.getItem(profKey()) || "null"); } catch (e) { return null; } }
+  function setPP(p) { try { if (p) window.localStorage.setItem(profKey(), JSON.stringify(p)); else window.localStorage.removeItem(profKey()); } catch (e) {} }
+  // cb(ok, نتيجة|رسالة خطأ, meta)  — meta.verified = ثبّته الخادم وتأكدنا منه ، meta.pending = حُفظ على الجهاز وسيُرسل لاحقًا
   function updateProfile(o, cb) {
     var ss = getSession();
     if (!ss) { goAccount(); return; }
+    var prev = JSON.parse(JSON.stringify(ss)), i, soft = {}, hasSoft = false;
+    for (i = 0; i < SOFT.length; i++) if (o.hasOwnProperty(SOFT[i])) { soft[SOFT[i]] = o[SOFT[i]]; hasSoft = true; }
+    var sensitive = o.hasOwnProperty("phone") || o.hasOwnProperty("newPin");
+    if (hasSoft && !sensitive) {                           // نُظهر التغيير فورًا
+      for (var k in soft) if (soft.hasOwnProperty(k)) ss[k] = soft[k];
+      setSession(ss); if (soft.rest) setRest(soft.rest);
+    }
     var payload = { action: "profile", uid: ss.uid, token: ss.token };
-    for (var k in o) if (o.hasOwnProperty(k)) payload[k] = o[k];
+    for (var key in o) if (o.hasOwnProperty(key)) payload[key] = o[key];
     http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify(payload), function (ok, data) {
       if (ok && data && data.ok === false && data.error === "auth") { authFail(); return; }
-      if (!ok || !data || data.ok === false) { cb(false, (data && data.error) || "تعذر الاتصال بالخادم."); return; }
-      ss.name = data.profile.name; ss.phone = data.profile.phone; ss.guardian = data.profile.guardian; ss.rest = data.profile.rest || [0, 3]; ss.reminders = data.profile.reminders || ["18:00", "22:00"]; ss.tasksStudent = data.profile.tasksStudent || ["06:00"]; ss.tasksGuardian = data.profile.tasksGuardian || ["06:00"];
-      setSession(ss); setRest(ss.rest);
-      cb(true, data.profile);
-    }, 15000);
+      if (ok && data && data.ok !== false && data.profile) {
+        var bad = [];
+        for (var f in soft) if (soft.hasOwnProperty(f) && !sameVal(soft[f], data.profile[f])) bad.push(f);
+        var cur = getSession() || ss;
+        cur.name = data.profile.name; cur.phone = data.profile.phone; cur.guardian = data.profile.guardian; cur.rest = data.profile.rest || [0, 3];
+        cur.reminders = data.profile.reminders || ["18:00", "22:00"]; cur.tasksStudent = data.profile.tasksStudent || ["06:00"]; cur.tasksGuardian = data.profile.tasksGuardian || ["06:00"];
+        setSession(cur); setRest(cur.rest);
+        if (bad.length) { cb(false, "الخادم رجّع قيمة مختلفة عن المطلوبة (" + bad.join("، ") + "). حاول مرة أخرى."); return; }
+        cb(true, data.profile, { verified: true });
+        return;
+      }
+      if (ok && data && data.ok === false) {              // رفض الخادم (تحقق): نرجّع القيم القديمة
+        setSession(prev); setRest(prev.rest);
+        cb(false, data.error || "تعذر الحفظ.");
+        return;
+      }
+      // لا اتصال: نبقي التغيير على الجهاز ونعيد الإرسال تلقائيًا لاحقًا (للحقول البسيطة فقط)
+      if (hasSoft && !sensitive) { var pp = getPP() || {}; for (var q in soft) if (soft.hasOwnProperty(q)) pp[q] = soft[q]; setPP(pp); cb(true, getSession(), { pending: true }); }
+      else { setSession(prev); cb(false, "تعذر الاتصال بالخادم. تأكد من الإنترنت ثم حاول مرة أخرى."); }
+    }, 25000);
+  }
+  function flushProfile() {
+    var pp = getPP(), ss = getSession();
+    if (!pp || !ss) return;
+    var payload = { action: "profile", uid: ss.uid, token: ss.token };
+    for (var k in pp) if (pp.hasOwnProperty(k)) payload[k] = pp[k];
+    http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify(payload), function (ok, data) { if (ok && data && data.ok !== false) setPP(null); else if (ok && data && data.ok === false && data.error !== "auth") setPP(null); }, 25000);
   }
   function resetRequest(phone, cb) {
     http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify({ action: "resetRequest", phone: phone }), function (ok, data) {
@@ -646,7 +710,7 @@ var SLOTS=[
   function onbKey() { var x = getSession(); return "qt_onb_" + (x ? x.uid : "anon"); }
   function onboardingDone() { try { return window.localStorage.getItem(onbKey()) === "1"; } catch (e) { return true; } }
   function setOnboardingDone() { try { window.localStorage.setItem(onbKey(), "1"); } catch (e) {} }
-  function logout() { setSession(null); window.location.replace("account.html"); }
+  function logout() { rememberPhone(); setSession(null); window.location.replace("account.html"); }
   function getState() { return state; }
   /* رسائل واتساب المعلّقة: تُحفظ محليًا حتى تصل للخادم (حتى لو أُغلقت الصفحة بسرعة) */
   function pendKey() { var x = getSession(); return "qt_pending_" + (x ? x.uid : "anon"); }
@@ -746,10 +810,13 @@ var SLOTS=[
     var V = 0, nq = 0, ph = "A", newDone = false;     // مؤشر الجديد
     var qFinish = {};          // رقم الربع -> { n, def }
     var lastRev = {};          // رقم الربع -> رقم آخر يوم تثبيت
+    var newStart = isYmd(QT_CONFIG.NEW_PLAN_START) ? QT_CONFIG.NEW_PLAN_START : "";
+    var newMode = false, nDaysNew = 0, unitDone = {}, lastRevP = {};
     var date = st.start, n = 0, guard = 0;
 
     function normNew() {
       if (newDone) return;
+      if (newMode) { if (V >= NEW_LAST) newDone = true; return; }
       while (nq < 9 && V >= MAIDA[nq].e) { nq++; ph = "A"; }
       if (nq >= 9) newDone = true;
     }
@@ -794,15 +861,30 @@ var SLOTS=[
       }
 
       /* ---- الجديد (بالآيات): نفس القاعدة — الباقي يُرحَّل ويكمل الربع، ولا يُقطع جزء ويُرمى في الجمعة ---- */
+      // الانتقال لخطة الجديد للترم الأول: من هذا اليوم يُحسب لكل مشترك آخر آية حفظها فعلًا ويُكمل من بعدها
+      if (!newMode && newStart && date >= newStart) {
+        newMode = true;
+        nDaysNew = unitsCovered(V);                                      // الأيام التي تجاوزها في الخطة الجديدة تُطرح من الـ25
+        for (var uk = 1; uk <= nDaysNew; uk++) unitDone[uk] = -1000 + uk;    // محفوظ قبل الانتقال (للتثبيت)
+        newDone = (V >= NEW_LAST);
+      }
       normNew();
       if (!newDone) {
-        var Q = MAIDA[nq];
+        var Q, uend, usize, aheadN, rf, rt, Nw;
+        if (newMode) {
+          var U = unitAt(V + 1);
+          aheadN = (V >= cumNU(nDaysNew));                               // في الموعد أو متقدم عن الخطة؟
+          rf = V + 1; rt = aheadN ? U.e : Math.min(V + U.size, NEW_LAST);
+          Nw = { q: U.k, ph: "P", plan: true, k: U.k, from: rf, to: rt, cnt: rt - rf + 1, st: "full", def: null, qi: { q: U.k, s: U.s, e: U.e, ph: "" }, newV: V, to2: null };
+        } else {
+        Q = MAIDA[nq];
         var inA = (V + 1 <= Q.mid);
-        var uend = inA ? Q.mid : Q.e, usize = inA ? (Q.mid - Q.s + 1) : (Q.e - Q.mid);
-        var aheadN = (V >= cumM(nDays));                                  // في الموعد أو متقدم؟
+        uend = inA ? Q.mid : Q.e; usize = inA ? (Q.mid - Q.s + 1) : (Q.e - Q.mid);
+        aheadN = (V >= cumM(nDays));                                      // في الموعد أو متقدم؟
         ph = inA ? "A" : "B";
-        var rf = V + 1, rt = aheadN ? uend : Math.min(V + usize, Q.e);
-        var Nw = { q: Q.q, ph: ph, from: rf, to: rt, cnt: rt - rf + 1, st: "full", def: null, qi: Q, newV: V, to2: null };
+        rf = V + 1; rt = aheadN ? uend : Math.min(V + usize, Q.e);
+        Nw = { q: Q.q, ph: ph, from: rf, to: rt, cnt: rt - rf + 1, st: "full", def: null, qi: Q, newV: V, to2: null };
+        }
         var nst = mode === "rep" ? ((rep.nw && rep.nw.st) || "full") : (mode === "miss" ? "none" : "full");
         var nto = (mode === "rep" && rep.nw && rep.nw.to !== undefined && rep.nw.to !== null && rep.nw.to !== "") ? Number(rep.nw.to) : null;
         var newV = V;
@@ -815,26 +897,63 @@ var SLOTS=[
           if (nst === "partial") { if (newV >= rt) nst = "full"; else if (newV <= V) nst = "none"; }
           if (nst === "extra") { if (newV <= rt) { nst = "full"; newV = rt; } }
           if (nst === "full") newV = Math.max(newV, rt);
-          if (newV > 120) newV = 120;
+          if (newV > (newMode ? NEW_LAST : 120)) newV = (newMode ? NEW_LAST : 120);
         }
         Nw.st = nst; Nw.to2 = newV;
-        V = newV; nDays++;
-        // تسجيل الأرباع التي انتهى حفظها
-        for (var qi = 0; qi < 9; qi++) {
-          if (V >= MAIDA[qi].e && !qFinish[MAIDA[qi].q]) qFinish[MAIDA[qi].q] = { n: n, def: null };
+        V = newV;
+        if (newMode) {
+          nDaysNew++;
+          for (var uu = 1; uu <= NU.length; uu++) if (NU[uu - 1].e <= V && unitDone[uu] === undefined) unitDone[uu] = n;      // اليوم الذي اكتملت فيه كل وحدة
+        } else {
+          nDays++;
+          // تسجيل الأرباع التي انتهى حفظها
+          for (var qi = 0; qi < 9; qi++) {
+            if (V >= MAIDA[qi].e && !qFinish[MAIDA[qi].q]) qFinish[MAIDA[qi].q] = { n: n, def: null };
+          }
         }
         day.nw = Nw;
       }
 
       /* ---- التثبيت ---- */
       var cand = [], qk;
+      if (newMode) {
+        /* صفحات التثبيت (كل صفحة = يومان من الخطة): حسب ما حُفظ فعلًا، بحد أقصى صفحتين يوميًا والأفضل صفحة، مع أولوية للجديد وعدم تراكم المراجعة */
+        var cuB = 0, ku;
+        for (ku = 1; ku <= NU.length; ku++) { if (unitDone[ku] !== undefined && unitDone[ku] < n) cuB = ku; else break; }
+        var nPages = Math.ceil(cuB / 2);
+        if (nPages > 0) {
+          var perDay = Math.min(nPages <= 7 ? 1 : 2, nPages), pitems = [], pp;
+          for (pp = 1; pp <= nPages; pp++) {
+            var newest = -100000;
+            for (ku = 2 * pp - 1; ku <= Math.min(2 * pp, cuB); ku++) if (unitDone[ku] > newest) newest = unitDone[ku];
+            var lr = (lastRevP[pp] !== undefined) ? lastRevP[pp] : -1;
+            pitems.push({ p: pp, newest: newest, lr: lr, needNew: newest > lr });
+          }
+          pitems.sort(function (a, b) {
+            if (a.needNew !== b.needNew) return a.needNew ? -1 : 1;                 // الجديد غير المُثبَّت أولًا
+            if (a.needNew) return b.newest - a.newest;                              // الأحدث أولًا
+            return a.lr !== b.lr ? a.lr - b.lr : a.p - b.p;                         // ثم الأقدم مراجعة (حتى لا تتراكم)
+          });
+          var chosen = pitems.slice(0, perDay).map(function (x) { return x.p; }).sort(function (a, b) { return a - b; });
+          var fstP = mode === "rep" ? ((rep.fx && rep.fx.st) || "done") : (mode === "miss" ? "none" : "done");
+          if (fstP !== "done" && fstP !== "none") fstP = "done";
+          var fitems = [];
+          for (pp = 0; pp < chosen.length; pp++) {
+            var sp = pageSpan(chosen[pp]), lastK = Math.min(2 * chosen[pp], cuB);
+            fitems.push({ p: chosen[pp], s: sp.s, e: Math.min(sp.e, NU[lastK - 1].e) });
+          }
+          day.fx = { mode: "pages", pages: chosen, items: fitems, qs: [], st: fstP };
+          if (fstP === "done") for (pp = 0; pp < chosen.length; pp++) lastRevP[chosen[pp]] = n;
+        }
+        cand = [];
+      } else
       for (qk = 1; qk <= 9; qk++) {
         var fq = qFinish[qk];
         if (!fq || fq.n >= n) continue;
         if (fq.def && !(fq.def.clearedDate && fq.def.clearedDate < date)) continue;
         cand.push(qk);
       }
-      if (cand.length) {
+      if (!newMode && cand.length) {
         cand.sort(function (a, b) {
           var la = (lastRev[a] !== undefined) ? lastRev[a] : (-1000 + qFinish[a].n);
           var lb = (lastRev[b] !== undefined) ? lastRev[b] : (-1000 + qFinish[b].n);
@@ -876,7 +995,7 @@ var SLOTS=[
       if (d.nw) M.newDays++;
     }
     M.endDate = M.days.length ? M.days[M.days.length - 1].date : st.start;
-    M.qFinish = qFinish;
+    M.qFinish = qFinish; M.newMode = newMode; M.newPlanStart = newStart;
     M.V = V; M.C = C;
     M.doneDays = 0; M.missedDays = []; 
     for (i = 0; i < M.days.length; i++) {
@@ -943,6 +1062,19 @@ var SLOTS=[
   var ST_AR = { full: "تم بالكامل", extra: "تم وزيادة", partial: "جزئي", none: "لم يتم", done: "تم" };
   var ST_ICON = { full: "✅", extra: "➕", partial: "🟡", none: "❌", done: "✅" };
 
+  // عناصر التثبيت لليوم بصيغة موحّدة (ربع قديم أو صفحة في الخطة الجديدة)
+  function fxItems(d) {
+    var out = [], i;
+    if (!d || !d.fx) return out;
+    if (d.fx.mode === "pages") { for (i = 0; i < d.fx.items.length; i++) out.push({ label: "صفحة " + d.fx.items[i].p, s: d.fx.items[i].s, e: d.fx.items[i].e, ph: "" }); }
+    else for (i = 0; i < d.fx.qs.length; i++) { var Q = MAIDA[d.fx.qs[i] - 1]; out.push({ label: "ربع " + Q.q, s: Q.s, e: Q.e, ph: Q.ph }); }
+    return out;
+  }
+  function fxText(d) {
+    var it = fxItems(d), a = [];
+    for (var i = 0; i < it.length; i++) a.push(it[i].label + " (آيات " + it[i].s + "–" + it[i].e + ")");
+    return a.join(" + ");
+  }
   function tSummary(d) {
     if (!d.t) return "";
     var s = ST_ICON[d.t.st] + " " + ST_AR[d.t.st];
@@ -972,7 +1104,7 @@ var SLOTS=[
       for (var i = 0; i < d.t.segs.length; i++) ss.push(segLabel(d.t.segs[i]) + " — " + d.t.segs[i].info.title);
       lines.push("💎 الكنز: " + ss.join(" + "));
     }
-    if (d.fx) lines.push("🔄 التثبيت: ربع " + d.fx.qs.join(" + ربع ") + " من المائدة");
+    if (d.fx) lines.push("🔄 التثبيت: " + fxText(d) + " من المائدة");
     return lines.join("\n");
   }
   function reportText(M, d) {
@@ -1019,7 +1151,7 @@ var SLOTS=[
           var tv = parseInt(normDigits(form.nw.toText || ""), 10);
           if (isNaN(tv)) errors.push(ns === "extra" ? "اكتب آخر آية وصلت لها في الجديد (بعد آية " + day.nw.to + ")." : "اكتب آخر آية حفظتها في الجديد (من آية " + day.nw.from + ").");
           else if (ns === "partial" && (tv < day.nw.from || tv >= day.nw.to)) errors.push("في الجزئي لازم تكون الآية بين " + day.nw.from + " و " + (day.nw.to - 1) + ".");
-          else if (ns === "extra" && (tv <= day.nw.to || tv > 120)) errors.push("في الزيادة لازم تكون الآية أكبر من " + day.nw.to + " وحتى 120.");
+          else if (ns === "extra" && (tv <= day.nw.to || tv > (day.nw.plan ? NEW_LAST : 120))) errors.push("في الزيادة لازم تكون الآية أكبر من " + day.nw.to + " وحتى " + (day.nw.plan ? NEW_LAST : 120) + ".");
           else rep.nw.to = tv;
         }
       }
@@ -1111,7 +1243,7 @@ var SLOTS=[
       if (d.nw.st === "extra" || d.nw.st === "partial") ns += " (إلى آية " + d.nw.to2 + ")";
       parts.push("الجديد: سورة المائدة، الآيات " + d.nw.from + "–" + d.nw.to + " — " + ns);
     }
-    if (d.fx) parts.push("التثبيت: مراجعة ربع " + d.fx.qs.join(" و") + " من المائدة — " + (d.fx.st === "done" ? "تمت المراجعة" : "لم تتم المراجعة"));
+    if (d.fx) parts.push("التثبيت: مراجعة " + fxText(d) + " من المائدة — " + (d.fx.st === "done" ? "تمت المراجعة" : "لم تتم المراجعة"));
     return parts.join(" | ");
   }
 
@@ -1195,7 +1327,8 @@ var SLOTS=[
     esc: esc, ymd: ymd, parseYmd: parseYmd, addDays: addDays, dowOf: dowOf, todayStr: todayStr, isYmd: isYmd,
     prettyDate: prettyDate, shortDate: shortDate, weekStart: weekStart, getParam: getParam, DAYNAMES: DAYNAMES, MONTHS: MONTHS,
     isRest: isRest, fmtU: fmtU, fmtRaw: fmtRaw, parseU: parseU, normDigits: normDigits,
-    unitInfo: unitInfo, segsOf: segsOf, segLabel: segLabel, segFull: segFull, partText: partText,
+    NEW_LAST_FOR: function (nw) { return nw && nw.plan ? NEW_LAST : 120; },
+    fxItems: fxItems, fxText: fxText, NU: NU, NEW_LAST: NEW_LAST, unitInfo: unitInfo, segsOf: segsOf, segLabel: segLabel, segFull: segFull, partText: partText,
     init: init, pull: pull, push: push, getState: getState, setStart: setStart, putReport: putReport, putKahf: putKahf, addComp: addComp,
     emptyState: emptyState, merge: merge, hasServer: hasServer,
     compute: compute, dayFor: dayFor, streak: streak, surahTimeline: surahTimeline,
@@ -1364,13 +1497,18 @@ QT.openReport = function (app, date, hooks) {
         return h + '</section>';
       }
       function newBox() {
-        var n = day.nw, q = n.qi, h = '<section class="box n">' + head("📖", "الجديد", "سورة المائدة · اليوم " + (n.ph === "A" ? "الأول" : "الثاني") + " من الربع"), i;
+        var n = day.nw, q = n.qi, h = '<section class="box n">' + head("📖", "الجديد", n.plan ? "خطة الجديد للترم الأول · سورة المائدة" : "سورة المائدة · اليوم " + (n.ph === "A" ? "الأول" : "الثاني") + " من الربع"), i;
+        if (n.plan) {
+          h += '<div class="item"><span class="pill g">اليوم ' + n.k + ' من 25</span><span class="name">من آية ' + n.from + ' إلى آية ' + n.to + '</span> <span class="mu">(' + n.cnt + ' آيات)</span>' +
+               '<br><span class="mu">مقرر هذا اليوم في الخطة: آيات ' + q.s + '–' + q.e + '</span></div>';
+        } else {
         h += '<div class="item"><span class="pill g">ربع ' + q.q + '</span><span class="name">من آية ' + n.from + ' إلى آية ' + n.to + '</span> <span class="mu">(' + n.cnt + ' آيات)</span>' +
              '<br><span class="mu">الربع يبدأ بـ</span> <span class="ph">«' + esc(q.ph) + '»</span> <span class="mu">(آيات ' + q.s + '–' + q.e + ')</span></div>';
+        }
         h += optBtns("nw", FOUR, false);
         var st = form.nw && form.nw.st, cur = form.nw && form.nw.toText;
         if (st === "extra") {
-          var ev = [], mx = Math.min(n.to + 15, 120);
+          var ev = [], mx = Math.min(n.to + 15, QT.NEW_LAST_FOR(n));
           for (i = n.to + 1; i <= mx; i++) ev.push([i, i]);
           h += '<div class="pick"><h4>➕ إلى أي آية وصلت؟ (بعد آية ' + n.to + ')</h4>' + (ev.length ? chipGrid("nw", ev, cur) : '<p class="hint">لا توجد آيات بعدها.</p>') + '</div>';
         }
@@ -1383,9 +1521,10 @@ QT.openReport = function (app, date, hooks) {
       }
       function fixBox() {
         var f = day.fx, h = '<section class="box f">' + head("🔄", "التثبيت", "مراجعة من المائدة"), i;
-        for (i = 0; i < f.qs.length; i++) {
-          var q = QT.MAIDA[f.qs[i] - 1];
-          h += '<div class="item"><span class="pill g">ربع ' + q.q + '</span><span class="name">من آية ' + q.s + ' إلى ' + q.e + '</span><br><span class="mu">يبدأ بـ</span> <span class="ph">«' + esc(q.ph) + '»</span></div>';
+        var fit = QT.fxItems(day);
+        for (i = 0; i < fit.length; i++) {
+          h += '<div class="item"><span class="pill g">' + fit[i].label + '</span><span class="name">من آية ' + fit[i].s + ' إلى ' + fit[i].e + '</span>' +
+               (fit[i].ph ? '<br><span class="mu">يبدأ بـ</span> <span class="ph">«' + esc(fit[i].ph) + '»</span>' : '') + '</div>';
         }
         return h + optBtns("fx", TWO, true) + '</section>';
       }
