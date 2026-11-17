@@ -16,7 +16,7 @@ var QT_CONFIG = {
   // لو كتبت تاريخًا: الأيام قبله تبقى بالنظام القديم وتقاريرها كما هي، ومنه يحسب النظام لكل مشترك آخر آية حفظها فعلًا ويكمل من بعدها.
   // مهم: اكتب نفس التاريخ في ملف engine.js على GitHub وفي ملف Engine.gs في Apps Script.
   NEW_PLAN_START: "",                                  // يُضبط تلقائيًا من الخادم (Code.gs ← NEW_PLAN_START)؛ لا تعدّله هنا
-  VERSION: "final-2",
+  VERSION: "final-3",
   // رقم الدعم (يظهر أسفل كل صفحة)
   SUPPORT_PHONE: "201095374757",
   // الرقم الذي ترسل منه الرسائل (رقم واتساب Meta). اكتبه بصيغة دولية بدون +؛ يظهر في شاشة الترحيب ليحفظه المشترك.
@@ -611,7 +611,12 @@ var SLOTS=[
   function login(o, cb) { o.action = "login"; authCall(o, cb); }
   var SOFT = ["name", "guardian", "rest", "reminders", "tasksStudent", "tasksGuardian"];   // حقول تُطبَّق فورًا على الجهاز (بدون كلمة سر)
   function profKey() { var x = getSession(); return "qt_pp_" + (x ? x.uid : "anon"); }
-  function sameVal(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  function canonList(a) { var o = [], seen = {}, i; for (i = 0; i < a.length; i++) { var k = String(a[i]); if (!seen[k]) { seen[k] = 1; o.push(k); } } return o.sort(); }
+  function sameVal(a, b, field) {                         // مقارنة «ما طلبناه» بـ«ما ثبّته الخادم»: الخادم يوحّد شكل رقم الهاتف (2010...) ويرتّب المواعيد والأيام ويحذف المكرر، فلا نعتبر ذلك اختلافًا
+    if (field === "guardian") { var x = a ? (normPhone(a) || String(a)) : "", y = b ? (normPhone(b) || String(b)) : ""; return x === y; }
+    if (a && b && typeof a === "object" && typeof b === "object" && a.length !== undefined && b.length !== undefined) return JSON.stringify(canonList(a)) === JSON.stringify(canonList(b));
+    return JSON.stringify(a) === JSON.stringify(b);
+  }
   function getPP() { try { return JSON.parse(window.localStorage.getItem(profKey()) || "null"); } catch (e) { return null; } }
   function setPP(p) { try { if (p) window.localStorage.setItem(profKey(), JSON.stringify(p)); else window.localStorage.removeItem(profKey()); } catch (e) {} }
   // cb(ok, نتيجة|رسالة خطأ, meta)  — meta.verified = ثبّته الخادم وتأكدنا منه ، meta.pending = حُفظ على الجهاز وسيُرسل لاحقًا
@@ -631,7 +636,7 @@ var SLOTS=[
       if (ok && data && data.ok === false && data.error === "auth") { authFail(); return; }
       if (ok && data && data.ok !== false && data.profile) {
         var bad = [];
-        for (var f in soft) if (soft.hasOwnProperty(f) && !sameVal(soft[f], data.profile[f])) bad.push(f);
+        for (var f in soft) if (soft.hasOwnProperty(f) && !sameVal(soft[f], data.profile[f], f)) bad.push(f);
         var cur = getSession() || ss;
         cur.name = data.profile.name; cur.phone = data.profile.phone; cur.guardian = data.profile.guardian; cur.rest = data.profile.rest || [0, 3];
         cur.reminders = data.profile.reminders || ["18:00", "22:00"]; cur.tasksStudent = data.profile.tasksStudent || ["06:00"]; cur.tasksGuardian = data.profile.tasksGuardian || ["06:00"];
