@@ -57,6 +57,7 @@
   function render() {
     var st = QT.getState();
     renderBase(st);
+    renderTpd(st);
     $("startBox").style.display = (st.start || (npStart() && !st.base)) ? "none" : "block";
     if (!st.start) {
       var t = QT.addDays(QT.todayStr(), 1);
@@ -133,6 +134,28 @@
       $("baseFrom").min = np; baseInfo();
     }
   }
+  /* ---------- عدد أرباع الكنز في اليوم ---------- */
+  function tpdInfo(st) {
+    var q = parseFloat($("tpdSel").value), M = QT.compute(st, QT.todayStr()), cur = QT.currentTpd(), i, d, c12 = QT.TOTAL12, today = QT.todayStr();
+    if (M) for (i = 0; i < M.days.length; i++) { d = M.days[i]; if (!d.isFriday && d.date >= today) { c12 = d.t ? d.t.from : QT.TOTAL12; break; } }   // موضع الكنز اليوم (مش نهاية الخطة)
+    var rem = Math.max(0, (QT.TOTAL12 - c12) / 12), days = q > 0 ? Math.ceil(rem / q) : 0;
+    $("tpdInfo").innerHTML = QT.esc("المتبقي من الكنز حوالي " + (Math.round(rem * 10) / 10) + " ربع ← حوالي " + days + " يوم بمعدل " + QT.tpdLabel(q) + " في اليوم. المعدل الحالي: " + QT.tpdLabel(cur) + ".");
+  }
+  function renderTpd(st) {
+    if (!st.start) { $("tpdBox").style.display = "none"; return; }
+    $("tpdBox").style.display = "block";
+    if (!$("tpdSel").options.length) {
+      var i, o; for (i = 0; i < QT.TPD_OPTIONS.length; i++) { o = document.createElement("option"); o.value = String(QT.TPD_OPTIONS[i]); o.textContent = QT.tpdLabel(QT.TPD_OPTIONS[i]) + (QT.TPD_OPTIONS[i] === 2 ? " (الافتراضي)" : ""); $("tpdSel").appendChild(o); }
+      $("tpdSel").value = String(QT.currentTpd()); $("tpdSel").onchange = function () { tpdInfo(QT.getState()); };
+    }
+    tpdInfo(st);
+  }
+  $("tpdSave").onclick = function () {
+    var q = parseFloat($("tpdSel").value), from = QT.setTpd(q);
+    if (!from) { QT.toast("اختيار غير صحيح", "err2"); return; }
+    render(); QT.toast("تم الحفظ ✅ — المعدل الجديد يسري من " + from, "ok2");
+  };
+
   $("baseC").oninput = baseInfo; $("baseV").oninput = baseInfo;
   $("baseEdit").onclick = function () { baseEditing = true; $("baseBox").removeAttribute("data-init"); renderBase(QT.getState()); $("baseBox").scrollIntoView(); };
   $("baseSave").onclick = function () {

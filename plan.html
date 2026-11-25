@@ -164,7 +164,7 @@
         }
 
         /* الكنز */
-        h += '<details class="acc"><summary>💎 خطة الكنز — الأنعام إلى الناس</summary><div class="body"><p class="muted">كل يوم ربعان. الأرقام هنا هي الخطة الحالية بعد احتساب الزيادة والنقصان.</p>';
+        h += '<details class="acc"><summary>💎 خطة الكنز — الأنعام إلى الناس</summary><div class="body"><p class="muted">المعدل الحالي: '+ QT.tpdLabel(QT.currentTpd()) +' كل يوم (تغيّره من الصفحة الرئيسية). الأرقام هنا هي الخطة الحالية بعد احتساب الزيادة والنقصان.</p>';
         for (i = 0; i < M.days.length; i++) {
           var dt = M.days[i];
           if (dt.isFriday || !dt.t) continue;

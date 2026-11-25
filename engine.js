@@ -16,7 +16,7 @@ var QT_CONFIG = {
   // لو كتبت تاريخًا: الأيام قبله تبقى بالنظام القديم وتقاريرها كما هي، ومنه يحسب النظام لكل مشترك آخر آية حفظها فعلًا ويكمل من بعدها.
   // مهم: اكتب نفس التاريخ في ملف engine.js على GitHub وفي ملف Engine.gs في Apps Script.
   NEW_PLAN_START: "",                                  // يُضبط تلقائيًا من الخادم (Code.gs ← NEW_PLAN_START)؛ لا تعدّله هنا
-  VERSION: "final-3",
+  VERSION: "final-5",
   // رقم الدعم (يظهر أسفل كل صفحة)
   SUPPORT_PHONE: "201095374757",
   // الرقم الذي ترسل منه الرسائل (رقم واتساب Meta). اكتبه بصيغة دولية بدون +؛ يظهر في شاشة الترحيب ليحفظه المشترك.
@@ -221,7 +221,16 @@ var SLOTS=[
   var UNITS = 180;       // عدد الأرباع
   var UNIT12 = 12;       // كل ربع = 12 جزءًا (لتمثيل ¼ ⅓ ½ ⅔ ¾ بدون كسور عشرية)
   var TOTAL12 = UNITS * UNIT12;   // 2160
-  var DAY12 = 24;        // المطلوب اليومي = ربعان
+  var DAY12 = 24;        // المطلوب اليومي الافتراضي = ربعان (يقدر كل مشترك يغيّره: st.tpd)
+  var TPD_OPTIONS = [1, 1.5, 2, 2.5, 3, 4];        // عدد أرباع الكنز المسموح اختيارها في اليوم
+  function tpdLabel(q) { return q === 1 ? "ربع واحد" : (q === 1.5 ? "ربع ونصف" : (q === 2 ? "ربعان" : (q === 2.5 ? "ربعان ونصف" : (q === 3 ? "3 أرباع" : (q === 4 ? "4 أرباع" : q + " ربع"))))); }
+  function normTpd(a) {                              // st.tpd = [{from:"YYYY-MM-DD", q:عدد الأرباع}] مرتبة بالتاريخ؛ لا تُطبَّق إلا من تاريخها فصاعدًا فلا يتغير الماضي
+    var out = [], i, x;
+    if (!a || a.length === undefined) return out;
+    for (i = 0; i < a.length; i++) { x = a[i]; if (x && /^\d{4}-\d{2}-\d{2}$/.test(String(x.from)) && TPD_OPTIONS.indexOf(Number(x.q)) > -1) out.push({ from: String(x.from), q12: Math.round(Number(x.q) * 12) }); }
+    out.sort(function (p, q) { return p.from < q.from ? -1 : (p.from > q.from ? 1 : 0); });
+    return out;
+  }
 
   /* -------------------------------------------------------------------
      الجديد: سورة المائدة — 9 أرباع، كل ربع على يومين
@@ -477,8 +486,8 @@ var SLOTS=[
 
   function merge(a, b) {            // دمج حالتين: الأحدث يفوز لكل عنصر
     var out = emptyState(), k;
-    if ((b.settingsAt || 0) > (a.settingsAt || 0)) { out.start = b.start || ""; out.settingsAt = b.settingsAt || 0; if (b.base) out.base = b.base; if (b.prevStart) out.prevStart = b.prevStart; }
-    else { out.start = a.start || ""; out.settingsAt = a.settingsAt || 0; if (a.base) out.base = a.base; if (a.prevStart) out.prevStart = a.prevStart; }
+    if ((b.settingsAt || 0) > (a.settingsAt || 0)) { out.start = b.start || ""; out.settingsAt = b.settingsAt || 0; if (b.base) out.base = b.base; if (b.prevStart) out.prevStart = b.prevStart; if (b.tpd) out.tpd = b.tpd; }
+    else { out.start = a.start || ""; out.settingsAt = a.settingsAt || 0; if (a.base) out.base = a.base; if (a.prevStart) out.prevStart = a.prevStart; if (a.tpd) out.tpd = a.tpd; }
     var sets = [["reports", "at"], ["kahf", "at"]];
     for (var i = 0; i < sets.length; i++) {
       var nm = sets[i][0];
@@ -620,6 +629,16 @@ var SLOTS=[
   function getPP() { try { return JSON.parse(window.localStorage.getItem(profKey()) || "null"); } catch (e) { return null; } }
   function setPP(p) { try { if (p) window.localStorage.setItem(profKey(), JSON.stringify(p)); else window.localStorage.removeItem(profKey()); } catch (e) {} }
   // cb(ok, نتيجة|رسالة خطأ, meta)  — meta.verified = ثبّته الخادم وتأكدنا منه ، meta.pending = حُفظ على الجهاز وسيُرسل لاحقًا
+  function api(o, cb, timeoutMs) {                       // طلب عام للخادم بحساب المشترك الحالي (يستعمله الاختبار)
+    var ss = getSession();
+    if (!ss) { goAccount(); return; }
+    var payload = { uid: ss.uid, token: ss.token }, k;
+    for (k in o) if (o.hasOwnProperty(k)) payload[k] = o[k];
+    http("POST", QT_CONFIG.SCRIPT_URL, JSON.stringify(payload), function (ok, data) {
+      if (ok && data && data.ok === false && data.error === "auth") { authFail(); return; }
+      if (cb) cb(ok, data);
+    }, timeoutMs || 20000);
+  }
   function updateProfile(o, cb) {
     var ss = getSession();
     if (!ss) { goAccount(); return; }
@@ -746,6 +765,23 @@ var SLOTS=[
     state.start = from; state.settingsAt = new Date().getTime();
     commit(null, null);
   }
+  // عدد الأرباع في اليوم: يسري من اليوم لو لم يُرسَل تقرير اليوم، وإلا من بكرة (وقبل بداية الخطة يسري من بدايتها)
+  function currentTpd() {
+    var l = normTpd(state.tpd), t = todayStr(), q = 2, i;
+    for (i = 0; i < l.length; i++) if (l[i].from <= t) q = l[i].q12 / 12;
+    return q;
+  }
+  function setTpd(q) {
+    q = Number(q); if (TPD_OPTIONS.indexOf(q) < 0) return false;
+    var t = todayStr(), from = t, rep = state.reports && state.reports[t];
+    if (rep && !rep.cancelled) from = addDays(t, 1);
+    if (state.start && from < state.start) from = state.start;
+    var keep = normTpd(state.tpd).filter(function (x) { return x.from < from; }).map(function (x) { return { from: x.from, q: x.q12 / 12 }; });
+    keep.push({ from: from, q: q });
+    state.tpd = keep; state.settingsAt = new Date().getTime();
+    commit(null, null);
+    return from;
+  }
   function reportOf(st, date) { var r = st && st.reports ? st.reports[date] : null; return (r && !r.cancelled) ? r : null; }
   // يضيف سجل التقرير السابق (لو كان اليوم مُرسلًا من قبل) إلى التقرير الجديد حتى لا يضيع الإنجاز السابق
   function withHistory(date, rep) {
@@ -825,6 +861,7 @@ var SLOTS=[
     var newStart = isYmd(QT_CONFIG.NEW_PLAN_START) ? QT_CONFIG.NEW_PLAN_START : "";
     var newMode = false, nDaysNew = 0, unitDone = {}, lastRevP = {};
     var date = st.start, n = 0, guard = 0;
+    var TPD = normTpd(st.tpd), tpi = 0, dpd = DAY12, anchor = 0;     // معدل الكنز اليومي لهذا المشترك (الافتراضي ربعان)
     /* نقطة الانطلاق (يحدّدها المشترك): كم ربعًا أنهى في الكنز، وآخر آية حفظها في الجديد، وكم يومًا عمل بالخطة القديمة.
        تبدأ الحسابات منها مباشرة (فلا تكرار لمحفوظ ولا تخمين)، وترقيم الأيام يكمل من عدد أيامه القديمة. التقارير القديمة تبقى محفوظة كما هي. */
     var B = (st.base && typeof st.base === "object") ? st.base : null;
@@ -861,10 +898,15 @@ var SLOTS=[
       var mode = rep ? "rep" : (date < today ? "miss" : "proj");
       var day = { n: n, date: date, isFriday: false, report: rep, mode: mode, t: null, nw: null, fx: null };
 
-      /* ---- الكنز: ربعان كل يوم. ما لم يُنجَز يُرحَّل لليوم التالي (تزيد مدة الخطة)، وما زاد يقلّل المطلوب ---- */
+      /* ---- الكنز: المعدل اليومي (افتراضيًا ربعان، ويختاره كل مشترك). ما لم يُنجَز يُرحَّل لليوم التالي (تزيد مدة الخطة)، وما زاد يقلّل المطلوب ---- */
+      while (tpi < TPD.length && date >= TPD[tpi].from) {              // تغيير المعدل يسري من تاريخه فقط؛ الأيام السابقة لا تتغير
+        if (TPD[tpi].q12 === DAY12) { dpd = DAY12; anchor = 0; tDays = Math.floor(C / DAY12); }
+        else { dpd = TPD[tpi].q12; anchor = C; tDays = 0; }
+        tpi++;
+      }
       if (C < TOTAL12) {
-        var slackT = C - DAY12 * tDays;                                   // سالب = متأخر عن الخطة ، غير سالب = في الموعد أو متقدم
-        var req = (slackT < 0) ? DAY12 : (DAY12 - (C % DAY12));
+        var slackT = C - (anchor + dpd * tDays);                          // سالب = متأخر عن الخطة ، غير سالب = في الموعد أو متقدم
+        var req = (slackT < 0) ? dpd : (dpd - ((C - anchor) % dpd));
         req = Math.min(req, TOTAL12 - C);
         var T = { from: C, req: req, to: C + req, extra: 0, def: null, st: "full" };
         var tst = mode === "rep" ? ((rep.t && rep.t.st) || "full") : (mode === "miss" ? "none" : "full");
@@ -1352,7 +1394,7 @@ var SLOTS=[
     isRest: isRest, fmtU: fmtU, fmtRaw: fmtRaw, parseU: parseU, normDigits: normDigits,
     NEW_LAST_FOR: function (nw) { return nw && nw.plan ? NEW_LAST : 120; },
     fxItems: fxItems, fxText: fxText, NU: NU, NEW_LAST: NEW_LAST, unitInfo: unitInfo, segsOf: segsOf, segLabel: segLabel, segFull: segFull, partText: partText,
-    init: init, pull: pull, push: push, getState: getState, setStart: setStart, setBase: setBase, putReport: putReport, putKahf: putKahf, addComp: addComp,
+    init: init, pull: pull, push: push, getState: getState, setStart: setStart, setBase: setBase, setTpd: setTpd, currentTpd: currentTpd, tpdLabel: tpdLabel, TPD_OPTIONS: TPD_OPTIONS, putReport: putReport, putKahf: putKahf, addComp: addComp,
     emptyState: emptyState, merge: merge, hasServer: hasServer,
     compute: compute, dayFor: dayFor, streak: streak, surahTimeline: surahTimeline,
     ST_AR: ST_AR, ST_ICON: ST_ICON, tSummary: tSummary, nSummary: nSummary, fSummary: fSummary,
@@ -1362,7 +1404,7 @@ var SLOTS=[
     reportOf: reportOf, withHistory: withHistory, cancelReport: cancelReport,
     setRest: setRest, rest: getRestArr, status: status, onboardingDone: onboardingDone, setOnboardingDone: setOnboardingDone,
     badges: badges, guardianDetail: guardianDetail, bestStreak: bestStreak,
-    session: getSession, register: register, login: login, updateProfile: updateProfile, logout: logout, normPhone: normPhone,
+    api: api, session: getSession, register: register, login: login, updateProfile: updateProfile, logout: logout, normPhone: normPhone,
     toast: toast, applyTheme: applyTheme, bindThemeButton: bindThemeButton,
     _setState: function (s) { state = s; }
   };
@@ -1493,7 +1535,7 @@ QT.openReport = function (app, date, hooks) {
 
       // اختيارات الكنز: زيادة من 2 إلى 4 ، جزئي من ¼ إلى 1½ (أقل من المطلوب)
       var EXTRA_T = ["2", "2¼", "2½", "3", "3¼", "3½", "4"];
-      var PART_T = ["¼", "½", "1", "1¼", "1½"];
+      var PART_T = ["¼", "½", "1", "1¼", "1½", "2", "2½", "3", "3½"];
 
       function treasureBox() {
         var t = day.t, h = '<section class="box t">' + head("💎", "الكنز", "المطلوب اليوم: " + QT.fmtU(t.req) + " ربع"), i;
@@ -1667,13 +1709,31 @@ QT.openReport = function (app, date, hooks) {
 
       /* ---------- الجمعة ---------- */
       function fridayPage() {
-        var k = QT.getState().kahf[date], sel = k ? (k.ok ? "done" : "none") : "";
+        var k = QT.getState().kahf[date], sel = k ? (k.ok ? "done" : "none") : "", examId = "";
         var h = '<section class="box f">' + head("🕌", "سورة الكهف", "قراءة أو تسميع — لا تدخل في الخطة ولا تُحسب نقصًا") +
           '<div class="opts two"><button type="button" class="opt full' + (sel === "done" ? " sel" : "") + '" data-k="done"><span>✅</span>تم</button>' +
           '<button type="button" class="opt none' + (sel === "none" ? " sel" : "") + '" data-k="none"><span>❌</span>لم يتم</button></div></section>' +
+          '<section class="box f">' + head("📝", "اختبار الأسبوع", "20 سؤالًا من الكنز والثابت — درجته تصل لولي الأمر") + '<div id="exBody" class="mu">⏳ جاري التحقق من اختبار الأسبوع...</div></section>' +
           '<div class="dock"><button type="button" id="kSend" class="send">📤 تسجيل تقرير اليوم</button></div>' + navBar();
         app.innerHTML = h;
         var chosen = sel;
+        function exLink(label) { return '<a class="btn" href="exam.html?mode=official&d=' + date + '">' + label + '</a>'; }
+        function loadExam() {
+          var box = document.getElementById("exBody"); if (!box) return;
+          if (!QT.hasServer()) { box.innerHTML = "الاختبار يحتاج اتصالًا بالخادم."; return; }
+          QT.api({ action: "exam", op: "find", date: date }, function (ok, data) {
+            if (!ok || !data || data.ok === false) { box.innerHTML = '<p class="mu">تعذّر التحقق من حالة الاختبار.</p>' + (date === QT.todayStr() ? exLink("📝 ابدأ اختبار الأسبوع") : ""); return; }
+            if (data.found && data.done && data.result) {
+              examId = data.sid;
+              box.innerHTML = '<div class="ok-msg">✅ أنهيت اختبار الأسبوع: <b>' + QT.esc(String(data.result.score)) + ' من ' + QT.esc(String(data.result.total)) + ' (' + QT.esc(String(data.result.pct)) + '%)</b></div><p class="mu">تصل النتيجة لولي الأمر مع تقرير الجمعة عند الضغط على «تسجيل تقرير اليوم».</p>';
+              return;
+            }
+            if (data.found && !data.done) { box.innerHTML = '<p class="mu">اختبارك مفتوح ولم ينتهِ. الرجوع له يُحسب خروجًا من الصفحة ويتبدّل السؤال.</p>' + exLink("▶ كمّل الاختبار"); return; }
+            if (date !== QT.todayStr()) { box.innerHTML = '<p class="mu">الاختبار الرسمي متاح يوم الجمعة نفسه فقط.</p>'; return; }
+            box.innerHTML = '<p class="mu">اختبار شامل: الكنز والثابت والتسميع بالصوت. جهّز نفسك، وما تخرجش من الصفحة وقت الاختبار.</p>' + exLink("📝 ابدأ اختبار الأسبوع");
+          }, 15000);
+        }
+        loadExam();
         app.onclick = function (ev) {
           ev = ev || window.event; var t = ev.target || ev.srcElement;
           while (t && t !== app && !(t.getAttribute && (t.getAttribute("data-k") || t.id === "kSend"))) t = t.parentNode;
@@ -1683,7 +1743,7 @@ QT.openReport = function (app, date, hooks) {
           if (t.id === "kSend") {
             if (!chosen) { QT.toast("اختر تم أو لم يتم لسورة الكهف", "err2"); return; }
             QT.getState().kahf[date] = { ok: chosen === "done", at: new Date().getTime() };
-            QT.putReport("fri-" + date, { v: 2, friday: true, kahf: chosen }, { notify: "🕌 الجمعة " + QT.shortDate(date) + " — سورة الكهف: " + (chosen === "done" ? "✅ تم" : "❌ لم يتم"), date: date, kind: "friday" }, function () {});
+            QT.putReport("fri-" + date, { v: 2, friday: true, kahf: chosen }, { notify: "🕌 الجمعة " + QT.shortDate(date) + " — سورة الكهف: " + (chosen === "done" ? "✅ تم" : "❌ لم يتم"), date: date, kind: "friday", examId: examId, kahf: chosen }, function () {});
             QT.putKahf(date, chosen === "done");
             try { window.sessionStorage.setItem("qt_just", date); } catch (e) {}
             setTimeout(function () { goDone(); }, 1200);
